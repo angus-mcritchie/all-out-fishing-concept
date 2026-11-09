@@ -2,113 +2,157 @@
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const qs=new URLSearchParams(location.search);
 const money=n=>'$'+Number(n).toFixed(2);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* bold the part of the text that matches what was typed, safely */
+function hl(text,q){const t=String(text);if(!q)return esc(t);const i=t.toLowerCase().indexOf(q.toLowerCase());if(i<0)return esc(t);return esc(t.slice(0,i))+'<b>'+esc(t.slice(i,i+q.length))+'</b>'+esc(t.slice(i+q.length))}
 
-/* dispatch countdown: next 12pm Melbourne cut-off, weekdays */
-const cd=$('[data-count]');
-if(cd){const tick=()=>{const now=new Date();const t=new Date(now);t.setHours(12,0,0,0);if(now>=t)t.setDate(t.getDate()+1);while([0,6].includes(t.getDay()))t.setDate(t.getDate()+1);const m=Math.floor((t-now)/60000);cd.textContent=Math.floor(m/60)+'h '+(m%60)+'m'};tick();setInterval(tick,30000)}
+/* ---- dispatch: 12pm Melbourne cut-off, Monday to Friday. Counts down in seconds on the day, otherwise names the next dispatch. */
+const dp=$('[data-dispatch] .d-text'),dps=$('[data-dispatch] .d-short');
+function melNow(){const p=Object.fromEntries(new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Melbourne',weekday:'short',hour:'numeric',minute:'numeric',second:'numeric',hourCycle:'h23'}).formatToParts(new Date()).map(x=>[x.type,x.value]));return{day:p.weekday,h:+p.hour,m:+p.minute,s:+p.second}}
+const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+function dispatchText(){const n=melNow();const di=DAYS.indexOf(n.day);const weekday=di>=1&&di<=5;const secs=n.h*3600+n.m*60+n.s;const cut=12*3600;
+  if(weekday&&secs<cut){const left=cut-secs;const h=Math.floor(left/3600),m=Math.floor(left%3600/60),s=left%60;const c=`<b class="count">${h?h+'h ':''}${m}m ${String(s).padStart(2,'0')}s</b>`;return [`Order in ${c} for dispatch today`,`Ships today: order in ${c}`]}
+  let d=(di+1)%7,label='tomorrow';while(d===0||d===6){d=(d+1)%7;label=''}
+  if(!label)label=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d];
+  return [`Next dispatch ${label} at 12pm`,`Next dispatch ${label} 12pm`]}
+if(dp){const tick=()=>{const t=dispatchText();dp.innerHTML=t[0];if(dps)dps.innerHTML=t[1]};tick();setInterval(tick,1000)}
+$$('.tz').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();b.classList.toggle('on')}));
 
-/* mega menus: hover on desktop, tap anywhere */
-const items=$$('.cats>li[data-menu]');
+/* ---- mega menus: hover on desktop, tap anywhere, Escape closes and returns focus */
+const items=$$('.cats>li[data-menu]');let menuT;/* one shared close timer, so moving between items never closes the new menu */
 const closeAll=()=>{items.forEach(i=>{i.classList.remove('open');i.querySelector('button').setAttribute('aria-expanded','false')})};
 const open=i=>{closeAll();i.classList.add('open');i.querySelector('button').setAttribute('aria-expanded','true')};
-const hover=matchMedia('(hover:hover) and (min-width:821px)').matches;
+const hover=matchMedia('(hover:hover) and (min-width:1025px)').matches;
 items.forEach(i=>{const b=i.querySelector('button');
   b.addEventListener('click',e=>{e.stopPropagation();i.classList.contains('open')?closeAll():open(i)});
-  if(hover){let t;i.addEventListener('mouseenter',()=>{clearTimeout(t);open(i)});i.addEventListener('mouseleave',()=>{t=setTimeout(closeAll,180)})}
+  if(hover){i.addEventListener('mouseenter',()=>{clearTimeout(menuT);open(i)});i.addEventListener('mouseleave',()=>{clearTimeout(menuT);menuT=setTimeout(closeAll,220)})}
 });
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeAll();closeSuggest();closeSheet()}});
-document.addEventListener('click',e=>{if(!e.target.closest('.cats'))closeAll();if(!e.target.closest('.search'))closeSuggest()});
-const dl=qs.get('menu');if(dl){const m=$(`.cats>li[data-menu="${dl}"]`);if(m){if(innerWidth<=820)$('.catbar').classList.add('open');open(m)}}
+const catbar=$('.catbar'),mb=$('.menu-btn');
+const closeDrawer=()=>{if(catbar&&catbar.classList.contains('open')){catbar.classList.remove('open');mb.setAttribute('aria-expanded','false');document.body.classList.remove('locked');mb.focus()}};
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;const o=$('.cats>li.open');if(o){closeAll();o.querySelector('button').focus();return}if(sug&&sug.classList.contains('open')){closeSuggest();quiet=true;inp.focus();quiet=false;return}if($('.side.open')){closeSheet();return}closeDrawer()});
+document.addEventListener('click',e=>{if(!e.target.closest('.cats'))closeAll();if(!e.target.closest('.search'))closeSuggest();if(!e.target.closest('.tz'))$$('.tz.on').forEach(x=>x.classList.remove('on'))});
+if(mb)mb.addEventListener('click',e=>{e.stopPropagation();const o=catbar.classList.toggle('open');mb.setAttribute('aria-expanded',o);document.body.classList.toggle('locked',o)});
+catbar&&catbar.addEventListener('click',e=>e.stopPropagation());
+const dl=qs.get('menu');if(dl){const m=$(`.cats>li[data-menu="${dl}"]`);if(m){if(matchMedia('(max-width:1024px)').matches){catbar.classList.add('open')}open(m)}}
 
-/* phone menu */
-const mb=$('.menu-btn');if(mb)mb.addEventListener('click',e=>{e.stopPropagation();const o=$('.catbar').classList.toggle('open');mb.setAttribute('aria-expanded',o)});
-$('.catbar')&&$('.catbar').addEventListener('click',e=>e.stopPropagation());
-
-/* search with real product suggestions */
+/* ---- search: suggestions with the matching text in bold */
 const inp=$('.search input'),sug=$('.suggest');
-if(inp&&innerWidth<=820)inp.placeholder='Search tackle, fish or brands';
-function closeSuggest(){sug&&sug.classList.remove('open')}
-function runSearch(){const q=inp.value.trim().toLowerCase();const D=window.AOF_LURES||[];const X=Object.values(window.AOF_EXTRA||{}).flat();
+if(inp&&matchMedia('(max-width:820px)').matches)inp.placeholder='Search tackle, fish or brands';
+const CATS=window.AOF_CATS||{},ITEMS=window.AOF_ITEMS||[],LURES=window.AOF_LURES||[];
+function closeSuggest(){if(sug){sug.classList.remove('open');inp&&inp.setAttribute('aria-expanded','false')}}
+function runSearch(){const raw=inp.value.trim(),q=raw.toLowerCase();
   if(!q){closeSuggest();return}
-  const hits=[...D,...X].filter(p=>(p.brand+' '+p.name).toLowerCase().includes(q)||p.species.some(s=>s.toLowerCase().includes(q))||p.styles.some(s=>s.toLowerCase().includes(q))).slice(0,4);
-  const sp=(window.AOF_SPECIES||[]).filter(s=>s.toLowerCase().includes(q)).slice(0,3);
-  $('.terms',sug).innerHTML='<h3>Shop by</h3>'+sp.map(s=>`<a href="lures.html?species=${encodeURIComponent(s)}"><b>${s}</b> lures</a>`).join('')+`<a href="lures.html"><b>${inp.value.trim()}</b> in all lures</a><a href="#">Setup Builder for <b>${inp.value.trim()}</b></a>`;
-  $('.hits',sug).innerHTML='<h3>Products</h3>'+(hits.map(p=>`<a class="hit" href="product.html"><img src="${p.img}" alt="" width="56" height="56" loading="lazy"><span class="n">${p.name}<small>${p.brand}</small></span><span class="p">${money(p.price)}</span></a>`).join('')||'<p>No matches in this sample. Try a brand or a fish.</p>');
-  sug.classList.add('open')}
-if(inp){inp.addEventListener('input',runSearch);inp.addEventListener('focus',runSearch);if(qs.get('search')){inp.value=qs.get('search');runSearch()}}
+  const shopTerms=[];
+  (window.AOF_SPECIES||[]).filter(s=>s.toLowerCase().includes(q)).slice(0,4).forEach(s=>shopTerms.push(`<a href="lures.html?species=${encodeURIComponent(s)}">${hl(s,raw)} lures</a>`));
+  Object.entries(CATS).forEach(([k,[name,,types]])=>{if(name.toLowerCase().includes(q))shopTerms.push(`<a href="shop.html?cat=${k}">${hl(name,raw)}</a>`);types.filter(t=>t.toLowerCase().includes(q)).forEach(t=>shopTerms.push(`<a href="shop.html?cat=${k}&type=${encodeURIComponent(t)}">${hl(t,raw)} <small>in ${esc(name)}</small></a>`))});
+  const all=[...LURES.map(p=>({...p,href:'product.html'})),...ITEMS.map(p=>({...p,href:'product.html'}))];
+  const hits=all.filter(p=>(p.brand+' '+p.name).toLowerCase().includes(q)||(p.species||[]).some(s=>s.toLowerCase().includes(q))||(p.styles||[]).some(s=>s.toLowerCase().includes(q))||(p.type||'').toLowerCase().includes(q)).sort((a,b)=>((b.brand+' '+b.name).toLowerCase().includes(q))-((a.brand+' '+a.name).toLowerCase().includes(q))).slice(0,5);
+  $('.terms',sug).innerHTML='<h3>Shop by</h3>'+shopTerms.slice(0,6).join('')+`<a href="lures.html">"${hl(raw,raw)}" in all lures</a>`;
+  $('.hits',sug).innerHTML='<h3>Products</h3>'+(hits.map(p=>`<a class="hit" href="${p.href}"><img src="${p.img}" alt="" width="56" height="56" loading="lazy"><span class="n">${hl(p.name,raw)}<small>${hl(p.brand,raw)}</small></span><span class="p">${p.max&&p.max>p.price?'<small>From</small> ':''}${money(p.price)}</span></a>`).join('')||'<p>No matches in this sample. Try a brand or a fish.</p>');
+  sug.classList.add('open');inp.setAttribute('aria-expanded','true')}
+let quiet=false;
+if(inp){inp.addEventListener('input',runSearch);inp.addEventListener('focus',()=>{if(!quiet&&inp.value.trim())runSearch()});
+  inp.addEventListener('keydown',e=>{if(e.key==='ArrowDown'&&sug.classList.contains('open')){const f=$('a',sug);if(f){e.preventDefault();f.focus()}}});
+  sug&&sug.addEventListener('keydown',e=>{const ls=$$('a',sug),i=ls.indexOf(document.activeElement);if(e.key==='ArrowDown'&&i>-1){e.preventDefault();(ls[i+1]||ls[i]).focus()}if(e.key==='ArrowUp'&&i>-1){e.preventDefault();(i?ls[i-1]:inp).focus()}});
+  if(qs.get('search')){inp.value=qs.get('search');runSearch()}}
 
-/* add to cart feedback */
-const cartN=$('.tools .cart .n');let cart=0;
-document.addEventListener('click',e=>{const a=e.target.closest('[data-add]');if(!a)return;e.preventDefault();cart++;if(cartN){cartN.hidden=false;cartN.textContent=cart}
+/* ---- cart: a local count only, nothing is sent anywhere */
+const cartN=$('.tools .cart .n');let cart=0;try{cart=+sessionStorage.getItem('aof-cart')||0}catch(e){}
+const showCart=()=>{if(cartN&&cart){cartN.hidden=false;cartN.textContent=cart}};showCart();
+document.addEventListener('click',e=>{const a=e.target.closest('[data-add]');if(!a)return;e.preventDefault();cart+=a.closest('.pdp')&&$('#qty')?+$('#qty').textContent:1;try{sessionStorage.setItem('aof-cart',cart)}catch(e){}showCart();
   const txt=a.textContent;a.textContent='Added';a.classList.add('done');setTimeout(()=>{a.textContent=txt;a.classList.remove('done')},1200)});
 
-/* segmented control + home lure picker */
+/* ---- segmented control + home lure picker */
 $$('.seg').forEach(s=>s.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;$$('button',s).forEach(x=>x.setAttribute('aria-pressed',x===b));s.dispatchEvent(new CustomEvent('seg',{detail:b.dataset.v,bubbles:true}))}));
 const pk=$('.pick');
 if(pk){let water='',sp=new Set(),st=new Set();
-  const go=$('#pick-go');const upd=()=>{const u=new URLSearchParams();if(water)u.set('water',water);if(sp.size)u.set('species',[...sp].join('|'));if(st.size)u.set('styles',[...st].join('|'));go.href='lures.html?'+u};
+  const go=$('#pick-go');const upd=()=>{const u=new URLSearchParams();if(water)u.set('water',water);if(sp.size)u.set('species',[...sp].join('|'));if(st.size)u.set('styles',[...st].join('|'));go.href='lures.html'+(u.toString()?'?'+u:'')};
   pk.addEventListener('seg',e=>{water=e.detail;upd()});
   $$('[data-sp]',pk).forEach(b=>b.addEventListener('click',()=>{const v=b.dataset.sp;sp.has(v)?sp.delete(v):sp.add(v);b.setAttribute('aria-pressed',sp.has(v));upd()}));
   $$('[data-st]',pk).forEach(b=>b.addEventListener('click',()=>{const v=b.dataset.st;st.has(v)?st.delete(v):st.add(v);b.setAttribute('aria-pressed',st.has(v));upd()}));upd()}
 
-/* poster note */
-const pos=$('.poster'),note=$('.note');if(pos)pos.addEventListener('click',()=>{note.classList.add('on');setTimeout(()=>note.classList.remove('on'),5200)});
+/* ---- poster note */
+const note=$('.note');
+$$('[data-note]').forEach(p=>p.addEventListener('click',()=>{note.textContent=p.dataset.note;note.classList.add('on');setTimeout(()=>note.classList.remove('on'),5200)}));
 
-/* lure browser */
-const grid=$('#grid');
+/* ---- product page: cheapest size first, price follows the size */
+$$('.sizes button').forEach(b=>b.addEventListener('click',()=>{$$('.sizes button').forEach(x=>x.setAttribute('aria-pressed',x===b));$('#size').textContent=b.textContent;if(b.dataset.price){$('#price').textContent=money(b.dataset.price);$('#from').textContent=b===$('.sizes button')?'Cheapest size shown first':''}}));
+$$('[data-q]').forEach(b=>b.addEventListener('click',()=>{const q=$('#qty');q.textContent=Math.max(1,Math.min(20,+q.textContent+ +b.dataset.q))}));
+
+/* ---- shared multi-select browser (Lure Browser and every shop category)
+   OR inside a facet (tick swivels AND floats = see both), AND across facets. State lives in the URL so reload and Back keep it. */
 let closeSheet=()=>{};
+const grid=$('#grid');
 if(grid){
-  const D=window.AOF_LURES;
-  const STY=['Hardbodies','Jerkbaits','Surface & Topwater','Soft Plastics','Stickbaits','Crankbaits','Poppers','Vibes & Blades','Casting Metals','Jigs','Squid Jigs','Spoons','Spinnerbaits','Spinners'];
-  const POP=['Snapper','Flathead','Australian Salmon','Trout','Bream','King George Whiting','Calamari','Mulloway'];
-  const allSp=[...new Set(D.flatMap(p=>p.species))].sort();
-  const others=allSp.filter(s=>!POP.includes(s));
-  const S={water:'',species:new Set(),styles:new Set()};
-  const demo=qs.get('demo')==='trout';
-  if(demo){S.species.add('Trout');S.styles.add('Jerkbaits');S.styles.add('Surface & Topwater')}
-  if(qs.get('water'))S.water=qs.get('water');
-  (qs.get('species')||'').split('|').filter(Boolean).forEach(s=>S.species.add(s));
-  (qs.get('styles')||'').split('|').filter(Boolean).forEach(s=>S.styles.add(s));
-  const match=(p,ig)=>(ig==='water'||!S.water||p.water.includes(S.water))&&(ig==='species'||!S.species.size||p.species.some(x=>S.species.has(x)))&&(ig==='styles'||!S.styles.size||p.styles.some(x=>S.styles.has(x)));
-  const listSp=$('#sp-list'),listSp2=$('#style-sheet'),rowSt=$('#style-chips');
-  const spFilter=$('#sp-find');
+  const isShop=!!$('[data-shop]');
+  const PRICE=[['u10','Under $10',0,10],['10-25','$10 to $25',10,25],['25-50','$25 to $50',25,50],['50-100','$50 to $100',50,100],['100','$100 and over',100,1e9]];
+  let D,F,label,catKey,cat;
+  if(isShop){catKey=CATS[qs.get('cat')]?qs.get('cat'):'terminal';cat=CATS[catKey];D=ITEMS.filter(p=>p.cat===catKey);
+    document.title=cat[0]+' | All Out Fishing';$('#cat-title').textContent=cat[0];$('#crumb').textContent=cat[0];$('#cat-sub').textContent=cat[1]+' Tick as many types as you like.';
+    const sizeName=catKey==='line'?'Breaking strain':'Size';$('#size-lab').textContent=sizeName;
+    F={type:{param:'type',get:p=>[p.type],order:cat[2],chips:true},brand:{param:'brand',get:p=>[p.brand]},size:{param:'size',get:p=>p.facet||[],chip:'#size-chips',label:sizeName},price:{param:'price',get:p=>PRICE.filter(r=>p.price>=r[2]&&p.price<r[3]).map(r=>r[0]),order:PRICE.map(r=>r[0])}};
+    if(catKey==='storage')$('#size-sec').hidden=true;
+    label=()=>cat[0].toLowerCase();
+  }else{
+    D=LURES;
+    const STY=['Hardbodies','Jerkbaits','Surface & Topwater','Soft Plastics','Stickbaits','Crankbaits','Poppers','Vibes & Blades','Casting Metals','Jigs','Squid Jigs','Spoons','Spinnerbaits','Spinners'];
+    const POP=['Snapper','Flathead','Australian Salmon','Trout','Bream','King George Whiting','Calamari','Mulloway'];
+    const allSp=[...new Set(D.flatMap(p=>p.species))].sort();
+    F={water:{param:'water',get:p=>p.water,single:true},species:{param:'species',get:p=>p.species,order:[...POP,...allSp.filter(s=>!POP.includes(s))],pop:POP},styles:{param:'styles',get:p=>p.styles,order:STY,chips:true},brand:{param:'brand',get:p=>[p.brand]},price:{param:'price',get:p=>PRICE.filter(r=>p.price>=r[2]&&p.price<r[3]).map(r=>r[0]),order:PRICE.map(r=>r[0])}};
+    label=()=>'lures';
+  }
+  const S={};Object.entries(F).forEach(([k,f])=>{S[k]=new Set((qs.get(f.param)||'').split('|').filter(Boolean))});
+  if(!isShop&&qs.get('demo')==='trout'){S.species.add('Trout');S.styles.add('Jerkbaits');S.styles.add('Surface & Topwater')}
+  let sort=qs.get('sort')||'';const sortSel=$('#sort');if(sortSel)sortSel.value=sort;
+  const match=(p,ig)=>Object.entries(F).every(([k,f])=>k===ig||!S[k].size||f.get(p).some(v=>S[k].has(v)));
+  const count=(k,v)=>D.filter(p=>match(p,k)&&F[k].get(p).includes(v)).length;
+  const values=k=>{const f=F[k];const vs=f.order||[...new Set(D.flatMap(f.get))].sort((a,b)=>k==='size'?sizeKey(a)-sizeKey(b):a.localeCompare(b));return vs.filter(v=>D.some(p=>f.get(p).includes(v)))};
+  function sizeKey(v){if(/\/0$/.test(v))return -parseInt(v);const n=parseFloat(v);return /oz/.test(v)?100+n:/lb/.test(v)?n:(v==='00'?-0.5:n)}
+  const priceLabel=v=>(PRICE.find(r=>r[0]===v)||[,v])[1];
+  const nice=(k,v)=>k==='price'?priceLabel(v):v;
+  function syncURL(){const u=new URLSearchParams();if(isShop)u.set('cat',catKey);Object.entries(F).forEach(([k,f])=>{if(S[k].size)u.set(f.param,[...S[k]].join('|'))});if(sort)u.set('sort',sort);history.replaceState(null,'','?'+u.toString())}
+  const chip=(k,v)=>{const n=count(k,v);return `<button class="chip" type="button" data-f="${k}" data-v="${esc(v)}" aria-pressed="${S[k].has(v)}" ${!n&&!S[k].has(v)?'disabled':''}>${esc(nice(k,v))} <small>${n}</small></button>`};
+  const check=(k,v,pop)=>{const n=count(k,v);return `<li class="${pop?'pop':''}"><label><input type="checkbox" data-f="${k}" data-v="${esc(v)}" ${S[k].has(v)?'checked':''} ${!n&&!S[k].has(v)?'disabled':''}> ${esc(nice(k,v))}<small>${n}</small></label></li>`};
   function draw(){
-    const q=(spFilter.value||'').toLowerCase();
-    const pool=D.filter(p=>match(p,'species'));
-    const li=s=>{const n=pool.filter(p=>p.species.includes(s)).length;return `<li class="${POP.includes(s)?'pop':''}"><label><input type="checkbox" data-sp="${s}" ${S.species.has(s)?'checked':''}> ${s}<small>${n}</small></label></li>`};
-    listSp.innerHTML=[...POP,...others].filter(s=>s.toLowerCase().includes(q)).map(li).join('');
-    const pool2=D.filter(p=>match(p,'styles'));
-    const chip=s=>{const n=pool2.filter(p=>p.styles.includes(s)).length;return `<button class="chip" type="button" data-st="${s}" aria-pressed="${S.styles.has(s)}">${s} <small>${n}</small></button>`};
-    rowSt.innerHTML=STY.map(chip).join('');
-    listSp2.innerHTML=STY.map(chip).join('');
-    const R=D.filter(p=>match(p));
+    const ck=isShop?'type':'styles';
+    const chipRow=values(ck).map(v=>chip(ck,v)).join('');
+    $(isShop?'#type-chips':'#style-chips').innerHTML=chipRow;$(isShop?'#type-sheet':'#style-sheet').innerHTML=chipRow;
+    if(!isShop){const q=($('#sp-find').value||'').toLowerCase();$('#sp-list').innerHTML=values('species').filter(s=>s.toLowerCase().includes(q)).map(s=>check('species',s,F.species.pop.includes(s))).join('');
+      $$('.water .seg button').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.v||'')===([...S.water][0]||'')))}
+    $('#brand-list').innerHTML=values('brand').filter(v=>count('brand',v)||S.brand.has(v)).map(v=>check('brand',v)).join('');
+    $('#price-list').innerHTML=values('price').map(v=>check('price',v)).join('');
+    if(F.size&&$('#size-chips'))$('#size-chips').innerHTML=values('size').filter(v=>count('size',v)||S.size.has(v)).map(v=>chip('size',v)).join('')||'<p class="hint">Pick a type to see sizes.</p>';
+    let R=D.filter(p=>match(p));
+    if(sort==='lo')R=[...R].sort((a,b)=>a.price-b.price);if(sort==='hi')R=[...R].sort((a,b)=>b.price-a.price);
     const join=a=>a.length<2?a.join(''):a.slice(0,-1).join(', ')+' and '+a[a.length-1];
-    const st=[...S.styles],sp=[...S.species];
-    let line=R.length+' '+(st.length?join(st.map(s=>s.toLowerCase())):'lures');
-    if(S.water)line+=' for '+S.water.toLowerCase();
-    if(sp.length)line+=(S.water?', chasing ':' for ')+join(sp.map(s=>s.replace(/^[A-Z](?=[a-z]+( |$))/,c=>c)));
+    const main=[...S[ck]];
+    let line=R.length+' '+(main.length?join(main.map(s=>s.toLowerCase())):label());
+    if(!isShop){if(S.water.size)line+=' for '+[...S.water][0].toLowerCase();if(S.species.size)line+=(S.water.size?', chasing ':' for ')+join([...S.species])}
     $('#res').textContent=line;
-    const act=[];
-    if(S.water)act.push(`<button type="button" data-rm="water:${S.water}"><b>${S.water}</b> ✕</button>`);
-    sp.forEach(s=>act.push(`<button type="button" data-rm="species:${s}"><b>${s}</b> ✕</button>`));
-    st.forEach(s=>act.push(`<button type="button" data-rm="styles:${s}"><b>${s}</b> ✕</button>`));
+    const act=[];Object.keys(F).forEach(k=>S[k].forEach(v=>act.push(`<button type="button" data-rm="${k}" data-v="${esc(v)}" aria-label="Remove ${esc(nice(k,v))}"><b>${esc(nice(k,v))}</b> &times;</button>`)));
     if(act.length)act.push('<button type="button" class="clear" data-rm="all">Clear all</button>');
     $('#active').innerHTML=act.join('');
-    grid.innerHTML=R.length?R.slice(0,48).map(p=>`<article class="pc"><a class="pic" href="product.html"><img src="${p.img}" alt="${p.name}" width="400" height="400" loading="lazy"></a><div class="br">${p.brand}</div><h3><a href="product.html">${p.name}</a></h3><div class="tags">${p.styles.slice(0,2).map(s=>`<span>${s}</span>`).join('')}</div><div class="row"><span class="pr">${money(p.price)}</span><span class="st">In stock</span></div>${p.opts>1?`<a class="add" href="product.html" style="display:grid;place-items:center;text-decoration:none">Choose from ${p.opts} colours</a>`:`<button class="add" type="button" data-add>Add to cart</button>`}</article>`).join(''):'<div class="empty" style="grid-column:1/-1"><strong>Nothing in this sample matches.</strong><br>Remove a filter above, or call the shop on (03) 5222 3257 and we will find it for you.</div>';
-    $$('.seg button',$('.water')).forEach(b=>b.setAttribute('aria-pressed',(b.dataset.v||'')===S.water));
-    $('#sheet-n').textContent='Show '+R.length+' lures';
+    grid.innerHTML=R.length?R.map(p=>{const range=p.max&&p.max>p.price;const sizes=(p.sizes||[]).length;
+      const btn=p.opts>1?`<a class="add" href="product.html">Choose from ${p.opts} colours</a>`:sizes>1?`<a class="add" href="product.html">Choose from ${sizes} sizes</a>`:'<button class="add" type="button" data-add>Add to cart</button>';
+      const tags=(isShop?[p.type]:p.styles.slice(0,2)).map(s=>`<span>${esc(s)}</span>`).join('');
+      return `<article class="pc"><a class="pic" href="product.html"><img src="${p.img}" alt="${esc(p.name)}" width="400" height="400" loading="lazy"></a><div class="br">${esc(p.brand)}</div><h3><a href="product.html">${esc(p.name)}</a></h3><div class="tags">${tags}</div><div class="row"><span class="pr">${range?'<small>From</small> ':''}${money(p.price)}</span><span class="st">In stock</span></div>${btn}</article>`}).join(''):`<div class="empty" style="grid-column:1/-1"><strong>Nothing in this sample matches.</strong><br>Remove a filter above, or call the shop on (03) 5222 3257 and we'll find it for you.</div>`;
+    $('#sheet-n').textContent='Show '+R.length+' '+(isShop?'products':'lures');
+    syncURL();
   }
-  document.addEventListener('change',e=>{const c=e.target.closest('[data-sp]');if(c&&c.matches('input')){c.checked?S.species.add(c.dataset.sp):S.species.delete(c.dataset.sp);draw()}});
-  document.addEventListener('click',e=>{const c=e.target.closest('.chip[data-st]');if(c){const v=c.dataset.st;S.styles.has(v)?S.styles.delete(v):S.styles.add(v);draw()}
-    const r=e.target.closest('[data-rm]');if(r){const v=r.dataset.rm;if(v==='all'){S.water='';S.species.clear();S.styles.clear()}else{const i=v.indexOf(':'),k=v.slice(0,i),x=v.slice(i+1);k==='water'?S.water='':S[k].delete(x)}draw()}});
-  $('.water').addEventListener('seg',e=>{S.water=e.detail;draw()});
-  spFilter.addEventListener('input',draw);
-  const side=$('.side'),back=$('.sheet-back'),done=$('.sheet-done');
-  const openSheet=()=>{side.classList.add('open');back.classList.add('open');done.classList.add('on')};
-  closeSheet=()=>{side.classList.remove('open');back.classList.remove('open');done.classList.remove('on')};
-  $('.filter-open').addEventListener('click',openSheet);back.addEventListener('click',closeSheet);done.addEventListener('click',closeSheet);
+  const toggle=(k,v)=>{if(F[k].single){const had=S[k].has(v);S[k].clear();if(!had)S[k].add(v)}else S[k].has(v)?S[k].delete(v):S[k].add(v)};
+  document.addEventListener('change',e=>{const c=e.target.closest('input[data-f]');if(c){toggle(c.dataset.f,c.dataset.v);draw();const n=$(`input[data-f="${c.dataset.f}"][data-v="${CSS.escape(c.dataset.v)}"]`);n&&n.focus()}});
+  document.addEventListener('click',e=>{const c=e.target.closest('.chip[data-f]');if(c){const k=c.dataset.f,v=c.dataset.v,inSheet=!!c.closest('.side');toggle(k,v);draw();const n=$(`${inSheet?'.side ':'.style-row '}.chip[data-f="${k}"][data-v="${CSS.escape(v)}"]`)||$(`.chip[data-f="${k}"][data-v="${CSS.escape(v)}"]`);n&&n.focus()}
+    const r=e.target.closest('[data-rm]');if(r){if(r.dataset.rm==='all')Object.values(S).forEach(s=>s.clear());else S[r.dataset.rm].delete(r.dataset.v);draw();($('#active button')||$('#res')).focus?.()}});
+  const water=$('.water');if(water)water.addEventListener('seg',e=>{S.water.clear();if(e.detail)S.water.add(e.detail);draw()});
+  const spf=$('#sp-find');if(spf)spf.addEventListener('input',draw);
+  if(sortSel)sortSel.addEventListener('change',()=>{sort=sortSel.value;draw()});
+  const side=$('.side'),back=$('.sheet-back'),done=$('.sheet-done'),opener=$('.filter-open');
+  const bg=()=>[...document.querySelectorAll('body>*:not(main),main>*:not(.lp),.lp>div:not(.sheet-back)')];
+  const openSheet=()=>{bg().forEach(x=>x.inert=true);side.classList.add('open');back.classList.add('open');done.classList.add('on');document.body.classList.add('locked');($('.sheet-x')||side).focus()};
+  closeSheet=()=>{if(!side.classList.contains('open'))return;bg().forEach(x=>x.inert=false);side.classList.remove('open');back.classList.remove('open');done.classList.remove('on');document.body.classList.remove('locked');(opener.offsetParent?opener:($('#sort')||$('.style-row .chip')||opener)).focus()};
+  opener.addEventListener('click',openSheet);back.addEventListener('click',closeSheet);done.addEventListener('click',closeSheet);$('.sheet-x')&&$('.sheet-x').addEventListener('click',closeSheet);
+  matchMedia('(min-width:821px)').addEventListener('change',m=>{if(m.matches)closeSheet()});
   if(qs.get('sheet'))openSheet();
   draw();
 }
-$$('.sizes button').forEach(b=>b.addEventListener('click',()=>{$$('.sizes button').forEach(x=>x.setAttribute('aria-pressed',x===b));$('#size').textContent=b.textContent}));
 })();

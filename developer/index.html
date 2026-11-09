@@ -1,0 +1,243 @@
+<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Developer pack | All Out Fishing concept</title><link rel="icon" href="../assets/brand/icon.png"><style>@font-face{font-family:"Barlow Condensed";font-weight:800;src:url(../assets/fonts/BarlowCondensed-800.woff2) format("woff2")}@font-face{font-family:Inter;font-weight:100 900;src:url(../assets/fonts/Inter-var.woff2) format("woff2")}
+*{box-sizing:border-box}body{margin:0;font:400 16px/1.6 Inter,system-ui,sans-serif;color:#14181c;background:#fff}main{max-width:900px;margin:0 auto;padding:28px 20px 60px}
+.top{background:#14181c;color:#fff}.top div{max-width:900px;margin:0 auto;padding:18px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}.top img{width:90px}.top a{color:#14f3b9;font-weight:700}
+h1,h2,h3{font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-weight:800;text-transform:uppercase;line-height:1.05}h1{font-size:44px;margin:0 0 10px}h2{font-size:32px;margin:40px 0 10px;padding-top:10px;border-top:3px solid #14f3b9}h3{font-size:24px;margin:30px 0 6px}
+a{color:#067a5e}code{background:#eceff3;padding:1px 5px;border-radius:4px;font-size:.9em;word-break:break-word}table{border-collapse:collapse;width:100%;font-size:14.5px;margin:12px 0;display:block;overflow-x:auto}th,td{border:1px solid #d9dfe6;padding:7px 9px;text-align:left;vertical-align:top}th{background:#eceff3}hr{border:0;border-top:1px solid #d9dfe6;margin:28px 0}li{margin:4px 0}
+.dl{display:inline-flex;align-items:center;min-height:46px;padding:0 18px;border-radius:6px;background:#14f3b9;color:#14181c;font:800 19px/1 "Barlow Condensed",sans-serif;text-transform:uppercase;text-decoration:none;margin:4px 8px 4px 0}</style></head><body>
+<div class="top"><div><img src="../assets/opt/logo.webp" alt="All Out Fishing"><a href="../changes/">What changed</a><a href="../index.html">Open the mock-up</a></div></div>
+<main><p><a class="dl" href="all-out-fishing-developer-pack.zip">Download the pack (zip)</a><a class="dl" href="README.md" style="background:#eceff3">README.md</a></p><h1>All Out Fishing: reskin brief for the developer</h1>
+<p>Prepared by Hobbies Direct for Peri and Michael at All Out Fishing, 10 November 2026.</p>
+<p><strong>What this is.</strong> All Out Fishing are happy with how the current site works. They want it to look and feel like the concept mock-up, plus a short list of changes from our 9 November catch-up. <strong>This is a reskin of the site you've built, not a rebuild.</strong> Keep the platform, data, checkout and integrations as they are.</p>
+<p><strong>What's in the pack</strong></p>
+<ul>
+<li><code>README.md</code>: this brief. Every change, with checks you can run.</li>
+<li><code>mockup/</code>: the clickable mock-up as plain HTML, CSS and JavaScript (no framework, no build step). Open <code>mockup/index.html</code> in a browser. Treat it as a visual and behaviour reference to copy from. It isn't production code.</li>
+<li><code>mockup/css/site.css</code>: every colour, font size, radius and breakpoint. Section 2 lists the tokens.</li>
+<li><code>mockup/js/site.js</code>: the behaviour, written in small readable pieces: the multi-select browser, dispatch countdown, search highlighting and menus.</li>
+</ul>
+<p>Live copy: <a href="https://angus-mcritchie.github.io/all-out-fishing-concept/">https://angus-mcritchie.github.io/all-out-fishing-concept/</a></p>
+<p>If you work with an AI coding assistant, give it this README and the <code>mockup/</code> folder. The requirements are written so it can work through them one at a time.</p>
+<hr />
+<h2>1. Priorities</h2>
+<table>
+<thead>
+<tr>
+<th>Order</th>
+<th>Change</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Product data and images correct (already under way)</td>
+<td>Peri: "Let's get all that stuff sorted first."</td>
+</tr>
+<tr>
+<td>2</td>
+<td>R1 to R4: the look, the multi-select browsing, filters, header and menu</td>
+<td>The core of the reskin</td>
+</tr>
+<tr>
+<td>3</td>
+<td>R5 to R12: copy, search, homepage sections, pricing</td>
+<td>Smaller, mostly front-end</td>
+</tr>
+<tr>
+<td>Later</td>
+<td>R13: "Where are you fishing?" finder</td>
+<td>Peri: not for this launch</td>
+</tr>
+</tbody>
+</table>
+<h2>2. Look and feel</h2>
+<p>Fonts: <strong>Barlow Condensed</strong> (600, 700, 800; headings, buttons, navigation; always uppercase) and <strong>Inter</strong> (body). Both are in <code>mockup/assets/fonts/</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Token</th>
+<th>Value</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--ink</code></td>
+<td><code>#14181c</code></td>
+<td>Header, footer, dark sections, main text</td>
+</tr>
+<tr>
+<td><code>--mint</code></td>
+<td><code>#14f3b9</code></td>
+<td>Brand accent. Only as a fill behind ink text, or as text on ink. Never mint text on white (fails contrast)</td>
+</tr>
+<tr>
+<td><code>--teal</code></td>
+<td><code>#067a5e</code></td>
+<td>Links and accent text on white</td>
+</tr>
+<tr>
+<td><code>--tray</code></td>
+<td><code>#eceff3</code></td>
+<td>Light panels, chips, cards</td>
+</tr>
+<tr>
+<td><code>--line</code></td>
+<td><code>#d9dfe6</code></td>
+<td>Borders and dividers</td>
+</tr>
+<tr>
+<td><code>--body</code></td>
+<td><code>#3f4954</code></td>
+<td>Secondary text</td>
+</tr>
+<tr>
+<td><code>--navy</code></td>
+<td><code>#1b2b4b</code></td>
+<td>Setup Builder panel</td>
+</tr>
+<tr>
+<td>Radius</td>
+<td>6px buttons and inputs, 10 to 14px cards and panels</td>
+<td>"Rounded, not oval" (Peri)</td>
+</tr>
+<tr>
+<td>Page width</td>
+<td>1360px max, 40px gutters (16px on phones)</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Breakpoints: phones up to 820px, tablets and small laptops 821 to 1024px, desktop above 1024px.</p>
+<h2>3. Requirements</h2>
+<p>Each one has <strong>what to build</strong> and <strong>how to check it</strong>.</p>
+<h3>R1. Tick more than one, on every category</h3>
+<p>All Out Fishing's favourite feature on the current site is ticking several product types at once (for example swivels and snaps, floats, and beads and tubing together). The Lure Browser already does this for lure styles. Do the same for every category.</p>
+<p><strong>Build</strong>
+- Each category page shows its product types as tick-chips across the top ("Tick more than one to compare").
+- <strong>Inside one filter, ticks add together (OR).</strong> Ticking Swivels &amp; Snaps and Floats shows both. <strong>Across filters, ticks narrow (AND).</strong> Floats plus Jarvis Walker shows Jarvis Walker floats only.
+- Coming in from a menu link or a tile pre-ticks that type and leaves the others available. For example, Line &gt; Braid opens Line with Braid ticked, and the shopper can add Leader.
+- Every option shows the number of results it would give. Options that would give zero are greyed out.
+- Ticked options also appear as removable pills above the results, with <strong>Clear all</strong>.
+- The ticks are kept in the URL (for example <code>?cat=line&amp;type=Braid|Leader&amp;brand=Rovex</code>), so reloading, Back and sharing a link keep the selection. The mock-up uses <code>history.replaceState</code>.
+- Species stays a Lure Browser filter. <strong>Don't</strong> make species a site-wide setting (Peri: "It's not a species thing").</p>
+<p><strong>Check</strong>
+1. Terminal Tackle: tick Swivels &amp; Snaps, then Floats. Both kinds show, and the heading reads "13 swivels &amp; snaps and floats".
+2. Add a brand. Only that brand's swivels and floats remain.
+3. Reload the page. The same ticks are still on.
+4. Line &gt; Braid from the menu opens with Braid ticked. Tick Leader, and braid is still shown.</p>
+<p>Reference: <code>shop.html</code>, and the <code>shared multi-select browser</code> block in <code>js/site.js</code>.</p>
+<h3>R2. Brand, size and price down the side</h3>
+<p><strong>Build</strong>
+- A sidebar with <strong>Brand</strong> (checkboxes with counts), <strong>Size</strong> (chips) and <strong>Price</strong> brackets (Under $10, $10 to $25, $25 to $50, $50 to $100, $100 and over).
+- Size depends on the category: hook size for hooks (8/0 to 10), sinker size, breaking strain for line (6lb, 10lb, 20lb…). Hide it where it doesn't apply (storage).
+- On phones the sidebar becomes one <strong>Filters</strong> sheet that slides up from the bottom. It has a close button and a sticky "Show N products" button, and Escape closes it.
+- The Lure Browser gets Brand and Price too, and Size (length or weight) once lures have a size field. The mock-up's lure data has no size yet.</p>
+<p><strong>Check</strong>: on a phone, open Filters on Bait Hooks, tick 1/0. The count on the button updates, closing returns focus to the Filters button.</p>
+<h3>R3. Phone header</h3>
+<p><strong>Build</strong>: remove the row of Lure Browser / Setup Builder / Shop by species buttons from under the search on phones. Put them at the bottom of the menu. The phone header is: menu button, logo, account, cart, then search.</p>
+<p><strong>Check</strong>: at 390px wide, the first screen shows the header, a short hero and the category tiles.</p>
+<h3>R4. Top menu</h3>
+<p><strong>Build</strong>
+- Order: <strong>Rods, Reels, Lures, Line, Terminal Tackle, Storage, Accessories, Apparel</strong>. Then Lure Browser, Setup Builder and Shop by species buttons on the right where there's room.
+- <strong>Storage</strong> is new at the top level (tackle boxes, trays, bags, backpacks, lure rolls, rod tubes, buckets). <strong>Bait &amp; Berley</strong> moves inside Accessories under its own heading. <strong>Hooks</strong> stay inside Terminal Tackle under a "Hooks" heading, with sinkers, swivels and the rest under "Rigging".
+- No "More" menu.
+- <strong>Don't shrink the menu text to make it fit.</strong> The mock-up's steps:
+  - Above 1360px: everything shows.
+  - 1141 to 1360px: slightly tighter spacing, and only the Lure Browser button.
+  - 1025 to 1140px: no shortcut buttons.
+  - 1024px and below (tablets in both orientations): categories move into the menu button. In the menu, each category opens in place (accordion).
+- Each mega menu has a "Shop all …" link next to its heading. Terminal Tackle and Line have a "Tick more than one" shortcut panel (for example "Swivels, floats and beads").</p>
+<p><strong>Check</strong>: at 1440, 1280, 1180, 1024, 820 and 390px wide, the categories never wrap onto two lines or overflow, and the text is never smaller than 18px.</p>
+<p>This menu is our suggestion. All Out Fishing will confirm the final categories.</p>
+<h3>R5. Dispatch line</h3>
+<p><strong>Build</strong>: the green strip at the top reads:
+- On a weekday before the cut-off: <strong>"Order in 2h 14m 05s for dispatch today"</strong>, counting down every second.
+- Otherwise: <strong>"Next dispatch tomorrow at 12pm"</strong> (or the weekday name, for example "Monday", over a weekend).
+- A small "?" explains: "Cut-off is 12pm Melbourne time, Monday to Friday."
+- Next to it: "Click &amp; Collect in Geelong". On phones the line shortens to "Ships today: order in 2h 14m 05s" next to the phone number.</p>
+<p>The time must be worked out in <strong>Australia/Melbourne</strong> time, whatever the shopper's device is set to. The mock-up uses <code>Intl.DateTimeFormat</code> with <code>timeZone:'Australia/Melbourne'</code>. Ideally the server supplies the cut-off and the business calendar.</p>
+<p><strong>Needs from All Out Fishing</strong>: the real cut-off, dispatch days and public holidays. The mock-up doesn't handle public holidays.</p>
+<p><strong>Check</strong>: set the device to Perth time. The countdown still ends at 12pm Melbourne time.</p>
+<h3>R6. Take out price match and reviews</h3>
+<p><strong>Build</strong>: remove "We price match" everywhere (strip, trust section, product page). Remove the reviews score and review cards from the homepage until there are enough reviews. Peri: "leave it blank, keep it cleaner."</p>
+<h3>R7. Search</h3>
+<p><strong>Build</strong>
+- Bold the part of each suggestion that matches what was typed ("<strong>Tro</strong>ut lures"). <strong>Escape the text first, then wrap the match</strong>, so product names can never inject HTML.
+- Suggestions come in two groups:
+  - <strong>Shop by</strong>: species, which open the Lure Browser with that fish ticked (keep this, Peri likes it), plus categories and types (for example "swiv" offers Swivels &amp; Snaps).
+  - <strong>Products</strong>: products whose name matches come before products that only match a tag.
+- Show both groups on phones too.
+- Down arrow moves into the suggestions, and Escape closes them.</p>
+<p><strong>Check</strong>: type "tro". Wherever "tro" appears in a suggestion's text it is bold, and "Trout lures" opens the Lure Browser with Trout ticked.</p>
+<h3>R8. Homepage hero and tiles</h3>
+<p><strong>Build</strong>
+- The hero sits <strong>inside</strong> the page width (it no longer runs off the right edge) with rounded corners. The photo shows a big catch (aspirational, "holding up big fish"). The team photo moves to About Us.
+- On phones the hero is short (heading, one line, photo to the right), so all six category tiles are reachable without much scrolling.
+- Category tiles are plain light cards, with no dark box around the group. The six tiles are Rods, Reels, Lures, Line, Terminal Tackle, Storage.</p>
+<h3>R9. "Why shop with us"</h3>
+<p>Rename "Why people buy from us" to <strong>"Why shop with us"</strong>. It has three items: Same-day dispatch (order by 12pm on weekdays), Click &amp; Collect (ready at our Geelong shop), Advice from anglers (we use this gear, plus the phone number).</p>
+<h3>R10. Video lower on the page</h3>
+<p><strong>Build</strong>: a "We're anglers first" section near the bottom with a poster image and a play button. <strong>Load the video only when it's tapped</strong> (no autoplay, no preload) so the page stays quick on phones. No video in the hero.</p>
+<p><strong>Needs</strong>: the 30-second highlight reel, still to be filmed.</p>
+<h3>R11. Guides and About Us</h3>
+<p><strong>Build</strong>: take <strong>Fishing Reports</strong> out of the homepage and footer. The bottom of the homepage has two large links: <strong>Guides</strong> (How to Catch, Buyer's Guides, Tackle Tips, Cookbook) and <strong>About Us</strong> (Meet the Team, Visit the Shop, socials). Group the footer the same way. Keep the legal and help links (Shipping &amp; Returns, Privacy, Terms).</p>
+<h3>R12. Cheapest price first</h3>
+<p><strong>Build</strong>
+- Product cards for items with more than one size show <strong>"From $X"</strong> using the lowest variant price.
+- Product pages open on the cheapest variant, and the price updates when another size is picked.</p>
+<p><strong>Decide with All Out Fishing</strong>: does "cheapest" mean the cheapest variant <strong>in stock</strong>? We'd suggest yes.</p>
+<h3>R13. Later: "Where are you fishing?"</h3>
+<p>A separate concept page (<code>finder.html</code>) for after launch. A shopper picks a water from a map or a list and sees its main species, ramps and land-based spots. One tap opens the Lure Browser with that species ticked, or there's a short "just give me the essentials" kit. It's only linked from the phone menu for now. <strong>Don't build it for launch.</strong> Notes for later: it needs a maintained list of waters and their species, with sources, and it should link to the Victorian Fisheries Authority for rules rather than restating them.</p>
+<h2>4. Data the reskin relies on</h2>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Used for</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Product type within its category (for example Swivels &amp; Snaps)</td>
+<td>R1 tick-chips</td>
+<td>Probably your existing subcategories</td>
+</tr>
+<tr>
+<td>Brand</td>
+<td>R2</td>
+<td></td>
+</tr>
+<tr>
+<td>Size, hook size or breaking strain</td>
+<td>R2</td>
+<td>Often in the variant names, for example "Sz4/0" or "300m 15lb". Worth storing as a proper attribute</td>
+</tr>
+<tr>
+<td>Variant prices and stock</td>
+<td>R12</td>
+<td></td>
+</tr>
+<tr>
+<td>Species, water type, lure style</td>
+<td>Lure Browser (as now)</td>
+<td>Mostly tagged on lures only</td>
+</tr>
+</tbody>
+</table>
+<h2>5. Quality checks</h2>
+<ul>
+<li><strong>Speed</strong>: hero image under about 60 KB with <code>fetchpriority="high"</code>, everything below the fold <code>loading="lazy"</code>, video loaded on tap only.</li>
+<li><strong>Keyboard</strong>: every menu, filter sheet and suggestion list works with Tab, arrows and Escape. Escape returns focus to the button that opened it. Focus outlines are visible (3px teal, or mint on dark).</li>
+<li><strong>Contrast</strong>: never mint text on white. Use teal for links on white.</li>
+<li><strong>Touch targets</strong> are 44px or more on phones.</li>
+<li><strong>No horizontal scrolling</strong> at 320, 390, 768, 1024 or 1440px.</li>
+</ul>
+<h2>6. What not to copy from the mock-up</h2>
+<ul>
+<li>The white "Concept mock-up" bar at the top.</li>
+<li>The sample products. Terminal Tackle, Line and Storage use some All Out Fishing listings from 2 November, plus Jarvis Walker and Rovex items at the maker's RRP. The reel's size prices are examples.</li>
+<li>The cart, which only counts clicks in the browser. Keep your real cart and checkout.</li>
+<li>"Crew note goes here" and "Your highlight reel goes here" are placeholders for All Out Fishing's own content.</li>
+</ul></main></body></html>
