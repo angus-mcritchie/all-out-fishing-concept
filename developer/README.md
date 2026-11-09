@@ -165,6 +165,39 @@ Rename "Why people buy from us" to **"Why shop with us"**. It has three items: S
 
 A separate concept page (`finder.html`) for after launch. A shopper picks a water from a map or a list and sees its main species, ramps and land-based spots. One tap opens the Lure Browser with that species ticked, or there's a short "just give me the essentials" kit. It's only linked from the phone menu for now. **Don't build it for launch.** Notes for later: it needs a maintained list of waters and their species, with sources, and it should link to the Victorian Fisheries Authority for rules rather than restating them.
 
+
+### R14. Polish rules (from the shop rules Hobbies Direct uses on its own site)
+
+**Build**
+- **Photos:** product photos are never cropped. Use `object-fit: contain` on white in every card, row and thumbnail. Cropping (`cover`) is only for scenes, people and banners.
+- **Cards:** product cards stay even. Titles stop at 2 lines, with the full name on hover. The photo's `alt` is blank when the product name sits right beside it.
+- **Chips and pills:** small 6px corners, not pill shapes. Active-filter pills read as one phrase.
+- **Links:** text links are dark and underlined. Mint is for links on dark backgrounds.
+- **Press feedback:** a button press shows at once, with a darker fill and a 0.97 shrink (none with reduced motion). Hover changes colour only, with no lift or shadow.
+- **Long filter lists:** show the 8 values with the most products, then "Show all N", which opens the full list A to Z. Lists over 15 values get a "Find a …" box.
+- **Sort:** offers Most popular, Lowest price, Highest price and Name A to Z, in sentence case.
+- **Breadcrumbs:** stop at the parent section, because the page's own name is the heading. Phones drop "Home".
+- **Product page on a phone:**
+  - The order is name, photo, then options, price and Add to Cart close together. Delivery and Click & Collect lines come after the button.
+  - A bar with the price and Add to Cart shows from arrival, and hides while the real button is on screen.
+- **Add to cart:** the button confirms, a short note shows the product's photo, and the cart badge pops (200ms, 1.15x at most). No fly-to-cart.
+- **Phone filters:** the Filters button stays on screen as you scroll.
+- **No results:** open text, not a box, with every way out: untick a filter, clear all, or call the shop.
+- **Spacing:** shop sections sit 48px apart on phones and 64px on desktop. Picture grids keep at least 12px between tiles.
+- **Phone numbers:** written without brackets, as "03 5222 3257". ABN in ATO grouping, "74 686 262 975".
+- **Delivery strip:** sits in a labelled area (`<aside aria-label="Delivery and contact">`).
+
+**Check**: at every width from 320 to 1920px, nothing scrolls sideways, no text is cut off, and every tap target on a phone is at least 44px or has that much clear space around it.
+
+### R15. Pages beyond the shop
+
+The mock-up includes these pages:
+- **Shopping:** Cart (`cart.html`), and Brands (`brands.html`, an A to Z with a find box). Each brand opens `shop.html?brand=Daiwa`, everything from one brand across all categories.
+- **About and help:** About Us, Contact (tap-to-call, directions link, a form with plain error messages), Shipping & Returns, Click & Collect and FAQ.
+- **Guides** (`guides.html`): every guide from the current site, grouped into How to catch, Buyer's guides and tips, and Cookbook.
+
+Keep your real cart and checkout. Copy the layout and wording, not the demo cart. The dashed boxes mark content All Out Fishing still needs to supply: opening hours, the returns policy, delivery prices and a line about each crew member.
+
 ## 4. Data the reskin relies on
 
 | Field | Used for | Notes |
@@ -186,6 +219,6 @@ A separate concept page (`finder.html`) for after launch. A shopper picks a wate
 ## 6. What not to copy from the mock-up
 
 - The white "Concept mock-up" bar at the top.
-- The sample products. Terminal Tackle, Line and Storage use some All Out Fishing listings from 2 November, plus Jarvis Walker and Rovex items at the maker's RRP. The reel's size prices are examples.
-- The cart, which only counts clicks in the browser. Keep your real cart and checkout.
+- The sample products. There are 377 in total: All Out Fishing's own 96 lures and 49 other listings from 2 November, plus Jarvis Walker, Rovex, Net Factory, Fintek and Tsunami items at the maker's RRP. The reel's size prices are examples.
+- The demo cart, which lives in the browser tab (sessionStorage). Keep your real cart and checkout.
 - "Crew note goes here" and "Your highlight reel goes here" are placeholders for All Out Fishing's own content.
