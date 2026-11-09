@@ -95,3 +95,4 @@
   .l-tot{font-size:16px}
 }
 @media (prefers-reduced-motion:reduce){.btn-mint:active,.btn-ink:active,.step button:active{transform:none}.sum-msg.flash{animation:none}}
+.l-rrp{color:var(--body);font-size:13px}

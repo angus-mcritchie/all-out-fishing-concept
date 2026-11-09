@@ -163,7 +163,7 @@ Rename "Why people buy from us" to **"Why shop with us"**. It has three items: S
 
 ### R13. Later: "Where are you fishing?"
 
-A separate concept page (`finder.html`) for after launch. A shopper picks a water from a map or a list and sees its main species, ramps and land-based spots. One tap opens the Lure Browser with that species ticked, or there's a short "just give me the essentials" kit. It's only linked from the phone menu for now. **Don't build it for launch.** Notes for later: it needs a maintained list of waters and their species, with sources, and it should link to the Victorian Fisheries Authority for rules rather than restating them.
+A separate concept page (`finder.html`) for after launch. A shopper picks a water from a map or a list and sees its main species, ramps and land-based spots. One tap opens the Lure Browser with that species ticked, or there's a short "just give me the essentials" kit. It's only linked from the phone menu for now. **Don't build it for launch.** The mock-up runs on real data: 266 waters from the Victorian Fisheries Authority's stocking database, plus OpenStreetMap ramps and jetties, a Leaflet map and Wikimedia Commons photos. `finder-sources.md`, next to this README, lists every dataset and its licence. **The VFA data is licensed for non-commercial use only**, so a live version needs the VFA's written permission, or the data under CC BY. Link to the VFA for rules rather than restating them.
 
 
 ### R14. Polish rules (from the shop rules Hobbies Direct uses on its own site)

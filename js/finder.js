@@ -1,183 +1,229 @@
 /* All Out Fishing concept: "Where are you fishing?" finder. A future idea, not for launch.
-   Every fact below is sourced in _src/finder-sources.md (checked 10 Nov 2026). No bag or size limits on purpose. */
+   Data: js/finder-data.js, built by _src/finder-data.py from VFA stocking records and OpenStreetMap.
+   No bag or size limits and no "what's biting" claims, on purpose. Sources: _src/finder-sources.md. */
 (function(){
 'use strict';
+var root=document.getElementById('finder');if(!root)return;
+var SHOP=[-38.142,144.339];
+var LEAFLET='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
+var CLUSTER='https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/';
 var VFA_GUIDE='https://vfa.vic.gov.au/recreational-fishing/recreational-fishing-guide';
-var SPECIES=(window.AOF_SPECIES||[]);
-function lureUrl(sp,extra){
-  var u=new URLSearchParams();
-  if(sp&&SPECIES.indexOf(sp)>-1)u.set('species',sp);
-  if(extra)Object.keys(extra).forEach(function(k){u.set(k,extra[k]);});
-  var q=u.toString();return 'lures.html'+(q?'?'+q:'');
-}
-function shopUrl(cat,types){return 'shop.html?cat='+cat+(types?'&type='+encodeURIComponent(types.join('|')):'');}
-var SETUP='index.html#setup';
+var PAGE=20;
+var AOF_SP=window.AOF_SPECIES||[];
+var ITEMS=window.AOF_ITEMS||[];
+var OPT={'australian-salmon':1,'bream':1,'brown-trout':1,'flathead':1,'king-george-whiting':1,'snapper':1,'southern-calamari':1};
+var CHIP_LABEL={'Yellow Belly':'Yellowbelly','Murray Cod':'Murray cod','Estuary Perch':'Estuary perch','King George Whiting':'KG whiting','Australian Salmon':'Salmon'};
+var TYPE_LABEL={lake:'Lake',river:'River',estuary:'Estuary',bay:'Bay'};
 
-var WATERS={
-'lake-eildon':{
-  name:'Lake Eildon',kind:'Freshwater lake',water:'Freshwater',
-  where:'About 150 km north-east of Melbourne, between Mansfield and Alexandra.',
-  about:'A huge irrigation storage on the Goulburn, with over 500 km of shoreline. Thick forest on the southern shores, farmland along much of the north. It’s one of Victoria’s best big Murray cod waters, and the only Victorian reservoir where houseboats run.',
-  fish:[
-    {sp:'Murray Cod',how:'Troll big deep divers, swimbaits or surface lures in 4 to 10 m. Or cast big spinnerbaits and hardbodies at timber, weed edges and banks.'},
-    {sp:'Yellow Belly',alt:'Golden perch',how:'Troll small crankbaits, lipless cranks or plastics at 6 to 12 m, or jig small black grubs straight down in the standing trees. Best in October and November.'},
-    {sp:'Redfin',how:'Fish straight down in the standing timber with small plastics, vibes or ice jigs. Worms and small yabbies work too. Caught all year.'},
-    {sp:'Trout',alt:'Brown and rainbow',how:'Troll slowly with winged lures or small floating minnows. From the bank, spin or fly-fish the edges in low light. Best from May to September.'}
-  ],
-  ramps:[['Dethridge Point Alliance Ramp','Embankment Rd, next to the dam wall'],['Jerusalem Creek Ramp','Jerusalem Creek Rd'],['Goughs Bay Ramps 6, 7 and 8','Bayside Bvd, Goughs Bay'],['Coller Bay Candlebark Ramp','Fraser Park Rd'],['Jamieson Boat Ramp','Mansfield-Woods Point Rd']],
-  rampNote:'Some ramps sit out of the water when the lake is low. Goulburn-Murray Water lists the level each ramp needs.',
-  land:[['Eildon Pondage','Below the dam wall. Stocked with trout, with a fishing pier and a wheelchair-friendly floating jetty.'],['Jerusalem Creek','Around the ramp towards the campground, if the lake isn’t too low.'],['Goughs Bay foreshore',''],['Bonnie Doon Bridge','Popular for golden perch when there’s enough water.']],
-  stay:['Car-access campgrounds in Lake Eildon National Park: Candlebark, Devil Cove, Lakeside and Jerusalem Creek. Lakeside suits boats best.','Taylors Creek, Mountaineer Creek and Coopers Point are boat-in only.','Candlebark needs a booking. Some campgrounds have lost showers and water, so check Parks Victoria first.','Dogs are only allowed at Jerusalem Creek inside the national park.'],
-  know:['The level moves a lot because the lake supplies irrigation water. Check it, and any blue-green algae warning, with Goulburn-Murray Water.','5 knot limit within 50 m of the shore, other boats and swimmers.','Keep out of the marked zones at the dam wall tower and spillway.','Carp can’t go back in alive.'],
-  kit:[
-    ['A 2-4 kg spin rod and 2500 reel. Covers redfin, yellowbelly and trout.',SETUP,'Build a setup'],
-    ['A few small soft plastics and vibes for the standing timber.',lureUrl('',{water:'Freshwater',styles:'Soft Plastics|Vibes & Blades'}),'Plastics and vibes'],
-    ['A couple of small floating minnows for trout.',lureUrl('Trout'),'Trout lures'],
-    ['Chasing cod? Add a heavier baitcast outfit and a big spinnerbait or deep diver.',lureUrl('Murray Cod'),'Cod lures'],
-    ['Braid and a fluorocarbon leader.',shopUrl('line',['Braid','Fluorocarbon']),'Line']
-  ],
-  links:[['VFA: Lake Eildon fishing guide','https://vfa.vic.gov.au/recreational-fishing/victorias-top-fishing-destinations/lake-eildon'],['Goulburn-Murray Water: level, ramps and algae','https://www.g-mwater.com.au/water-operations/storages/goulburn/lakeeildon'],['Parks Victoria: Lake Eildon National Park','https://www.parks.vic.gov.au/places-to-see/parks/lake-eildon-national-park']]
-},
-'corio-bay':{
-  name:'Corio Bay',kind:'Saltwater bay',water:'Saltwater',
-  where:'Geelong waterfront, on the western side of Port Phillip. Our home water.',
-  about:'A working port with shipping terminals, overlooked by Geelong. It’s famous for big snapper in winter, and more fish move up the west side of Port Phillip into the bay in spring. Piers, rock walls and ramps are all close to town.',
-  fish:[
-    {sp:'Snapper',how:'Anchor and berley with pilchard, silver whiting or squid. On lures, try soft plastics, slow pitch jigs or weighted vibes. Pinkies hang around the pylons at Rippleside and Wangim Walk.'},
-    {sp:'King George Whiting',how:'Anchor, berley and fish pipis, squid strips, mussels or worms. Try the shallows off Avalon and Kirk Point, or Rippleside from shore. Move if nothing bites in 20 minutes.'},
-    {sp:'Flathead',how:'Drift with squid or cut pilchard, or cast 2.5 to 3 inch paddle-tail plastics over the mud. St Helens rock wall, Limeburners Bay and Wangim Walk.'},
-    {sp:'Calamari',how:'Squid jigs in size 2.5 to 3.5, worked over weed and reef. Cunningham Pier after dark and the North Shore rocks.'},
-    {sp:'Australian Salmon',how:'Keep a rod rigged with a small soft plastic or metal slug. Cunningham Pier and Rippleside.'}
-  ],
-  ramps:[['Limeburners Point Boat Harbour','Hearn Parade. Toilets and a fish cleaning table.'],['St Helens Boat Harbour','Swinburne St, North Geelong. Floating pontoons.'],['Grammar School Lagoon','Foreshore Rd, Corio.'],['Avalon Beach','Avalon Rd. Open to southerly winds.'],['Clifton Springs','Jetty Rd, just outside the bay on the Bellarine.']],
-  rampNote:'Limeburners and St Helens are more sheltered from the wind.',
-  land:[['Cunningham Pier','350 m into the bay and lit at night.'],['Rippleside Pier','Upgraded in 2019 and good for families.'],['Wangim Walk','440 m walkway at the Royal Geelong Yacht Club.'],['St Helens rock wall','Drive right up to it. Merv’s Reef, a man-made shellfish reef, is 62 m off the breakwall.'],['Griffin Gully jetty and Mackey St breakwater','Both have fishing platforms.'],['North Shore rocks','Good at low tide, and at night for big snapper in winter.']],
-  stayTitle:'Bait on the way',
-  stay:['Our shop is at 105 Shannon Ave, Manifold Heights. Call in for bait and a chat on the way down.'],
-  know:['Big ships have right of way in the channels. Don’t anchor in a shipping channel or tie up to buoys and markers.','Watch for ships when you cross or anchor near the channels, especially in the inner harbour.'],
-  kit:[
-    ['A 2-4 kg spin rod and 2500 reel for the piers and drifting.',SETUP,'Build a setup'],
-    ['A few 3 inch paddle-tail soft plastics and jigheads.',lureUrl('',{water:'Saltwater',styles:'Soft Plastics'}),'Soft plastics'],
-    ['A couple of squid jigs, size 2.5 to 3.5.',lureUrl('Calamari'),'Squid jigs'],
-    ['A metal slug for salmon.',lureUrl('Australian Salmon',{styles:'Casting Metals'}),'Metals'],
-    ['Bait hooks, sinkers and swivels for pilchard and squid baits.',shopUrl('terminal',['Bait Hooks','Sinkers','Swivels & Snaps']),'Terminal tackle']
-  ],
-  links:[['VFA: Western Port Phillip, including Corio Bay','https://vfa.vic.gov.au/recreational-fishing/victorias-top-fishing-destinations/port-phillip/where-to-fish-port-phillip/western'],['VFA: Geelong and Bellarine','https://vfa.vic.gov.au/recreational-fishing/victorias-top-fishing-destinations/port-phillip/where-to-fish-port-phillip/geelong-and-bellarine'],['Ports Victoria: boating near shipping','https://ports.vic.gov.au/boating-and-events/']]
-},
-'barwon-estuary':{
-  name:'Barwon River estuary',kind:'Estuary',water:'Saltwater',
-  where:'From Lake Connewarre down to the sea between Barwon Heads and Ocean Grove.',
-  about:'The tidal lower Barwon runs about 10 km from Lake Connewarre to the mouth. The channel is about 50 m wide and 3 to 4 m deep, getting shallow near Barwon Heads. Fish it from the bank or a boat. An early morning incoming tide is a good time.',
-  fish:[
-    {sp:'Bream',alt:'Black bream',how:'Best in Lake Connewarre from October to February, when the water is brackish. Most fish there come from boats.'},
-    {sp:'Australian Salmon',how:'Lures and soft plastics are worth a go.'},
-    {sp:'Trevally',alt:'Silver trevally',how:'Lures and soft plastics are worth a go.'},
-    {sp:'Flathead',how:'Common in the estuary. Try pipis, whitebait or bass yabbies on an incoming tide.'},
-    {sp:'King George Whiting',how:'Common in the estuary. Try pipis, whitebait or bass yabbies on an incoming tide.'},
-    {sp:'Mulloway',how:'Here at times, not every trip.'},
-    {sp:'Estuary Perch',how:'Turn up at times in Lake Connewarre.'}
-  ],
-  ramps:[['Guthridge Street, Ocean Grove','Two lanes, floating pontoons and a fish cleaning table.'],['River Parade, Barwon Heads','One lane and one pontoon.'],['Minah Street, Barwon Heads','Shallow crushed rock. Very small non-powered craft only.']],
-  rampNote:'Big tidal range and strong current at all three. There’s no built ramp on Lake Connewarre.',
-  land:[['Pelican Court and Sheepwash fishing jetties','Upgraded with new decking, handrails and rod holders.'],['Taits Point','The access point on the south side of Lake Connewarre.']],
-  stay:['Barwon Coast runs Barwon Heads Caravan Park, right on the river near the mouth.','Also Riverview Family Caravan Park and Riverside Bush Camping in Ocean Grove.'],
-  know:['Barwon Bluff Marine Sanctuary is next to the river mouth, and fishing is banned inside its boundaries. Check the Parks Victoria map before you fish near the mouth.','Crossing the Barwon bar is high risk, and lifejackets are compulsory. Barwon Coast suggests staying north of the bridge.','5 knot limit on the river and on Lake Connewarre.','Lake Connewarre is shallow and gets choppy in a south-westerly. Motors there are limited to 7.5 kW (10 hp).','Barwon Coast has a live camera and tide times for the bridge.'],
-  kit:[
-    ['A light 1-3 kg spin rod and 1000-2500 reel for bream.',SETUP,'Build a setup'],
-    ['A few small soft plastics and small hardbodies.',lureUrl('Bream'),'Bream lures'],
-    ['A metal slug or plastic for salmon and trevally.',lureUrl('Australian Salmon'),'Salmon lures'],
-    ['Light leader, bait hooks and small sinkers for pipis and bass yabbies.',shopUrl('terminal',['Bait Hooks','Sinkers']),'Terminal tackle']
-  ],
-  links:[['VFA: Lower Barwon and Lake Connewarre','https://vfa.vic.gov.au/recreational-fishing/fishing-locations/inland-angling-guide/areas/barwon/barwon-angling-waters'],['Barwon Coast: boating, bar and tides','https://barwoncoast.com.au/about-the-coast/boating-and-ports-notice-to-mariners/'],['Parks Victoria: Barwon Bluff Marine Sanctuary','https://www.parks.vic.gov.au/places-to-see/parks/barwon-bluff-marine-sanctuary']]
-},
-'lake-purrumbete':{
-  name:'Lake Purrumbete',kind:'Crater lake',water:'Freshwater',
-  where:'Western District, about 15 km east of Camperdown.',
-  about:'A volcanic crater lake about 2.5 km across, with clear water most of the year. The crater lakes are known for big trout and salmon, and Purrumbete has plenty of redfin too. The VFA stocks it every year.',
-  fish:[
-    {sp:'Trout',alt:'Brown and rainbow',how:'Troll slowly with winged lures or baitfish-style minnows, or float a mudeye near the weed beds. From the bank, Powerbait on a running sinker works well for rainbows.'},
-    {sp:'Chinook Salmon',how:'Troll the thermocline in the warmer months. Or anchor, berley and fish a lightly weighted pilchard or blue bait deep.'},
-    {sp:'Redfin',how:'Often out in open water, well away from structure, so a good sounder helps. Soft plastics, vibes or ice jigs, or worms on a paternoster.'}
-  ],
-  ramps:[['Lake Purrumbete Holiday Park','A dual-lane concrete ramp and a kayak ramp, with jetties and moorings.']],
-  rampNote:'Low water stopped most boating by the end of summer 2025. Check the level before you tow.',
-  land:[['Purrumbete Pit Road','Opposite the holiday park. Parking and signs, popular for fly fishing, no 4WD needed.']],
-  stay:['Lake Purrumbete Holiday Park, 540 Purrumbete East Road, Koallah. Cabins and camp sites, plus bait and ice.'],
-  know:['Stocked every year with brown trout, rainbow trout, Chinook salmon and brook trout.','In 2019 the VFA reported browns over 6 kg and Chinook over 8 kg.','5 knot limit on the lake, and there’s a bird sanctuary.'],
-  kit:[
-    ['A 2-4 kg spin rod and 2500 reel.',SETUP,'Build a setup'],
-    ['Winged trolling lures and small minnows for trout and salmon.',lureUrl('Trout'),'Trout lures'],
-    ['Soft plastics and vibes for redfin.',lureUrl('Redfin'),'Redfin lures'],
-    ['Floats and bait hooks for mudeye under a bubble float.',shopUrl('terminal',['Floats','Bait Hooks']),'Floats and hooks']
-  ],
-  links:[['VFA: Lake Purrumbete facilities and stocking','https://vfa.vic.gov.au/about/news/first-class-facilities-complete-at-lake-purrumbete'],['VFA: South West and Grampians','https://vfa.vic.gov.au/recreational-fishing/victorias-top-fishing-destinations/south-west-and-grampians'],['VFA: trout and salmon rules','https://vfa.vic.gov.au/recreational-fishing/recreational-fishing-guide/trout-and-salmon-regulations']]
-}
-};
+var D,W,BY={},SP,GROUPS=[],state={q:'',chip:'',sort:'near',me:null,shown:PAGE,open:null};
+var map,cluster,markers={},rampLayer,mapOk=false;
+var $=function(s,el){return (el||document).querySelector(s);};
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function load(src,isCss){return new Promise(function(ok,no){var el=document.createElement(isCss?'link':'script');if(isCss){el.rel='stylesheet';el.href=src;}else{el.src=src;}el.onload=ok;el.onerror=no;document.head.appendChild(el);setTimeout(function(){no(new Error('timeout'));},12000);});}
+function km(a,b){var r=Math.PI/180,dl=(b[0]-a[0])*r,dn=(b[1]-a[1])*r,h=Math.sin(dl/2)*Math.sin(dl/2)+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dn/2)*Math.sin(dn/2);return 12742*Math.asin(Math.sqrt(h));}
+function big(n){return n>=1e6?(n/1e6).toFixed(n>=1e7?0:1).replace(/\.0$/,'')+'M':n>=1e4?Math.round(n/1e3)+'k':n.toLocaleString('en-AU');}
+var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function ym(s){if(!s)return '';var p=s.split('-');return MON[+p[1]-1]+' '+p[0];}
+function lureUrl(sp){return AOF_SP.indexOf(sp)>-1?'lures.html?species='+encodeURIComponent(sp):'lures.html';}
+function shopUrl(cat,type){var has=ITEMS.some(function(i){return i.cat===cat&&(!type||i.type===type);});return 'shop.html?cat='+cat+(type&&has?'&type='+encodeURIComponent(type):'');}
+function group(vfa){var m=SP[vfa]||{};return m.lure||m.label||vfa;}
+function photo(key){return key?(OPT[key]?'assets/opt/sp-'+key+'.webp':'assets/species/'+key+'.jpg'):'';}
+function compass(a,b){var d=Math.atan2((b[1]-a[1])*Math.cos(a[0]*Math.PI/180),b[0]-a[0])*180/Math.PI;return ['north','north-east','east','south-east','south','south-west','west','north-west'][Math.round(((d+360)%360)/45)%8];}
+function total(w){return w.s.reduce(function(a,s){return a+s[1];},0);}
+function last(w){return w.s.reduce(function(a,s){return s[2]>a?s[2]:a;},'');}
+function dist(w){return state.me?Math.round(km(state.me,[w.la,w.lo])):w.g;}
+function thumb(w,px){return w.p?w.p.u.replace(/\/960px-/,'/'+px+'px-'):'';}
+function salt(w){return w.t==='bay'||!!w.src;}
 
-var panel=document.getElementById('fd-panel');
-if(!panel)return;
-var emptyHTML=panel.innerHTML;
-var cur=null,pick='';
+/* ---------- start */
+var dataSrc=(document.currentScript&&document.currentScript.src||'js/finder.js').replace(/finder\.js(\?.*)?$/,'finder-data.js');
+load(dataSrc).then(init,function(){$('#fd-list').innerHTML='<li class="fd-none">The water list didn&rsquo;t load. Try refreshing.</li>';});
 
-function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
-function list(items){return '<ul class="fd-ul">'+items.map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ul>';}
-function pairs(items){return '<ul class="fd-ul fd-pairs">'+items.map(function(p){return '<li><b>'+esc(p[0])+'</b>'+(p[1]?'<span>'+esc(p[1])+'</span>':'')+'</li>';}).join('')+'</ul>';}
-
-function fishCard(f){
-  var linked=SPECIES.indexOf(f.sp)>-1;
-  return '<li class="fd-fish"><h4>'+esc(f.sp)+(f.alt?' <small>'+esc(f.alt)+'</small>':'')+'</h4><p>'+esc(f.how)+'</p>'+
-    (linked?'<a class="btn btn-ink fd-browse" href="'+esc(lureUrl(f.sp))+'">Browse '+esc(f.sp)+' lures</a>'
-           :'<a class="link fd-browse-all" href="'+esc(lureUrl('',{water:cur.water}))+'">Browse '+esc(cur.water.toLowerCase())+' lures</a>')+'</li>';
+function init(){
+  D=window.AOF_FINDER;W=D.waters;SP=D.species;
+  W.forEach(function(w){BY[w.id]=w;w._g={};w.s.forEach(function(s){w._g[group(s[0])]=1;});});
+  var counts={};W.forEach(function(w){Object.keys(w._g).forEach(function(g){counts[g]=(counts[g]||0)+1;});});
+  GROUPS=Object.keys(counts).filter(function(g){return AOF_SP.indexOf(g)>-1;}).sort(function(a,b){return counts[b]-counts[a];});
+  $('#fd-sub').textContent=D.meta.stocked+' Victorian waters with VFA stocking records. Tap one.';
+  $('#fd-src').innerHTML='Stocking: <a href="'+esc(D.meta.vfaDb)+'" rel="noopener">Victorian Fisheries Authority stocking database</a>, '+D.meta.stockFrom+' to '+ym(D.meta.stockTo.slice(0,7))+', &copy; State of Victoria. Ramps and jetties: &copy; <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap</a> contributors. Downloaded '+esc(D.meta.built.split('-').reverse().join('/'))+'.';
+  var p=new URLSearchParams(location.search);
+  var sp=p.get('species');if(sp&&counts[sp])state.chip=sp;
+  chips();list();
+  var w=p.get('water');if(w&&BY[w])open(w,false);
+  bind();
+  loadMap();
 }
 
-function catchHTML(){
-  var w=cur;
-  if(pick==='_kit'){
-    return '<div class="fd-kit"><h4>The essentials for '+esc(w.name)+'</h4><p class="fd-sub">Just want to catch fish? Start with this and you’re covered for most of what’s here.</p><ol>'+
-      w.kit.map(function(k){return '<li><span>'+esc(k[0])+'</span><a class="link" href="'+esc(k[1])+'">'+esc(k[2])+'</a></li>';}).join('')+
-      '</ol><a class="btn btn-mint" href="'+esc(SETUP)+'">Build my setup</a></div>';
-  }
-  var fish=pick?w.fish.filter(function(f){return f.sp===pick;}):w.fish;
-  return '<ul class="fd-fishes">'+fish.map(fishCard).join('')+'</ul>';
+/* ---------- chips, search, sort */
+function chips(){
+  var el=$('#fd-chips');
+  el.innerHTML='<span class="fd-chips-lab">Show me</span>'+GROUPS.map(function(g){return '<button type="button" class="fd-chip" data-chip="'+esc(g)+'" aria-pressed="'+(state.chip===g)+'">'+esc(CHIP_LABEL[g]||g)+'</button>';}).join('');
+  var go=$('#fd-go');
+  if(state.chip&&AOF_SP.indexOf(state.chip)>-1){go.hidden=false;go.innerHTML='<a class="btn btn-mint" href="'+lureUrl(state.chip)+'">Browse '+esc(CHIP_LABEL[state.chip]||state.chip)+' lures</a>';}
+  else{go.hidden=true;go.innerHTML='';}
 }
-
-function render(id,focus){
-  cur=WATERS[id]||null;pick='';
-  document.querySelectorAll('[data-water]').forEach(function(a){
-    var on=a.getAttribute('data-water')===id;
-    if(on)a.setAttribute('aria-current','true');else a.removeAttribute('aria-current');
-    a.classList.toggle('on',on);
+function filtered(){
+  var q=state.q.trim().toLowerCase();
+  var out=W.filter(function(w){
+    if(state.chip&&!w._g[state.chip])return false;
+    if(q&&(w.n+' '+(w.v||'')+' '+w.r).toLowerCase().indexOf(q)<0)return false;
+    return true;
   });
-  if(!cur){panel.innerHTML=emptyHTML;return;}
-  var w=cur;
-  var chips='<button type="button" class="chip" data-pick="" aria-pressed="true">All fish here</button>'+
-    w.fish.map(function(f){return '<button type="button" class="chip" data-pick="'+esc(f.sp)+'" aria-pressed="false">'+esc(f.sp)+'</button>';}).join('')+
-    '<button type="button" class="chip fd-chip-kit" data-pick="_kit" aria-pressed="false">I just want to catch fish</button>';
-  panel.innerHTML=
-    '<header class="fd-ph on-ink"><span class="fd-kind">'+esc(w.kind)+'</span><h2 id="fd-ph">'+esc(w.name)+'</h2><p class="fd-where">'+esc(w.where)+'</p></header>'+
-    '<div class="fd-body"><p class="fd-about">'+esc(w.about)+'</p>'+
-    '<section class="fd-sec" aria-labelledby="fd-c"><h3 id="fd-c">What do you want to catch?</h3><div class="chips fd-chips" role="group" aria-label="Pick a fish">'+chips+'</div><div id="fd-catch">'+catchHTML()+'</div></section>'+
-    '<section class="fd-sec fd-access" aria-labelledby="fd-a"><h3 id="fd-a">Getting on the water</h3><div class="fd-two"><div><h4>Boat ramps</h4>'+pairs(w.ramps)+(w.rampNote?'<p class="fd-note">'+esc(w.rampNote)+'</p>':'')+'</div><div><h4>Land-based</h4>'+pairs(w.land)+'</div></div></section>'+
-    '<section class="fd-sec" aria-labelledby="fd-k"><h3 id="fd-k">Good to know</h3><div class="fd-two"><div>'+list(w.know)+'</div><div><h4>'+esc(w.stayTitle||'Camping and stays')+'</h4>'+list(w.stay)+'</div></div></section>'+
-    '<section class="fd-check" aria-labelledby="fd-r"><h3 id="fd-r">Check before you go</h3><p>Rules, closures and conditions change. Bag and size limits are in the <a class="link" href="'+VFA_GUIDE+'" rel="noopener">VFA Recreational Fishing Guide</a>.</p><ul>'+
-      w.links.map(function(l){return '<li><a class="link" href="'+esc(l[1])+'" rel="noopener">'+esc(l[0])+'</a></li>';}).join('')+'</ul></section></div>';
-  if(focus){panel.focus({preventScroll:true});panel.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});}
+  out.sort(state.sort==='most'?function(a,b){return total(b)-total(a);}:function(a,b){return dist(a)-dist(b);});
+  return out;
+}
+function rowSpecies(w){
+  var g=Object.keys(w._g).map(function(k){return CHIP_LABEL[k]||k;});
+  return g.slice(0,3).join(', ')+(g.length>3?' +'+(g.length-3):'');
+}
+function list(){
+  var f=filtered(),el=$('#fd-list');
+  $('#fd-count').textContent=f.length+(f.length===1?' water':' waters')+(state.chip?' with '+(CHIP_LABEL[state.chip]||state.chip).toLowerCase():'');
+  el.innerHTML=f.slice(0,state.shown).map(function(w){
+    return '<li><a href="finder.html?water='+w.id+'" data-water="'+w.id+'"'+(state.open===w.id?' aria-current="true"':'')+'>'+(w.p?'<img class="fd-ico fd-thumb" src="'+esc(thumb(w,120))+'" alt="" width="34" height="34" loading="lazy">':'<span class="fd-ico fd-ico-'+w.t+'" aria-hidden="true"></span>')+'<span class="fd-row"><span class="fd-name">'+esc(w.n)+'</span><span class="fd-meta">'+esc(rowSpecies(w))+'</span></span><span class="fd-km">'+dist(w)+'<small>km</small></span></a></li>';
+  }).join('')||'<li class="fd-none">No waters match. Try another name or fish.</li>';
+  var ph=f.filter(function(w){return w.p;}),strip=$('#fd-strip');
+  strip.hidden=!ph.length;
+  strip.innerHTML=ph.length?'<ul>'+ph.slice(0,12).map(function(w){return '<li><a href="finder.html?water='+w.id+'" data-water="'+w.id+'"><img src="'+esc(thumb(w,330))+'" alt="" width="330" height="186" loading="lazy"><span class="fd-strip-n">'+esc(w.n)+'</span><span class="fd-strip-k">'+dist(w)+' km</span></a></li>';}).join('')+'</ul>':'';
+  var more=$('#fd-more');more.hidden=f.length<=state.shown;more.textContent='Show '+Math.min(PAGE,f.length-state.shown)+' more';
+  if(mapOk)paint(f);
+}
+function bind(){
+  var t;$('#fd-q').addEventListener('input',function(e){clearTimeout(t);t=setTimeout(function(){state.q=e.target.value;state.shown=PAGE;if(state.open){close(true);history.replaceState(null,'','finder.html');}list();},120);});
+  root.addEventListener('click',function(e){
+    var c=e.target.closest('[data-chip]');if(c){var v=c.dataset.chip;state.chip=state.chip===v?'':v;state.shown=PAGE;if(state.open){close(true);history.replaceState(null,'','finder.html');}chips();list();fit();var nc=$('[data-chip="'+v+'"]');if(nc)nc.focus();return;}
+    var s=e.target.closest('[data-sort]');if(s){sortBy(s.dataset.sort);return;}
+    var a=e.target.closest('a[data-water]');if(a&&!e.metaKey&&!e.ctrlKey){e.preventDefault();open(a.dataset.water,true);return;}
+    if(e.target.closest('#fd-more')){state.shown+=PAGE;list();return;}
+    if(e.target.closest('[data-close]')){close();return;}
+    var k=e.target.closest('[data-kit]');if(k){var box=$('#fd-kit'),on=k.getAttribute('aria-expanded')!=='true';k.setAttribute('aria-expanded',on);box.hidden=!on;if(on)box.scrollIntoView({block:'nearest',behavior:'smooth'});}
+  });
+  addEventListener('popstate',function(){var w=new URLSearchParams(location.search).get('water');if(w&&BY[w])open(w,false);else close(true);});
+}
+function sortBy(k){
+  if(k==='me'&&!state.me){
+    if(!navigator.geolocation){note('Location isn&rsquo;t available in this browser.');return;}
+    var b=$('[data-sort="me"]');b.textContent='Finding you…';
+    navigator.geolocation.getCurrentPosition(function(p){state.me=[p.coords.latitude,p.coords.longitude];b.textContent='Near me';setSort('me');},function(){b.textContent='Near me';note('Couldn&rsquo;t get your location. Sorted by distance from the shop.');},{timeout:10000,maximumAge:600000});
+    return;
+  }
+  if(k==='near')state.me=null;
+  setSort(k);
+}
+function setSort(k){state.sort=k==='most'?'most':'near';root.querySelectorAll('[data-sort]').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.sort===k);});state.shown=PAGE;list();}
+function note(h){var n=document.querySelector('.note');if(n){n.innerHTML=h;n.classList.add('on');setTimeout(function(){n.classList.remove('on');},3500);}}
+
+/* ---------- water panel */
+var FISH='<svg viewBox="0 0 120 48" aria-hidden="true"><path d="M8 24c14-15 38-20 62-16 12 2 22 8 30 16-8 8-18 14-30 16-24 4-48-1-62-16zm92 0 16-14v28z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/><circle cx="26" cy="21" r="3" fill="currentColor"/></svg>';
+function speciesCards(w){
+  var seen={};
+  return w.s.map(function(s){
+    var m=SP[s[0]]||{label:s[0]},img=photo(m.photo),lure=m.lure&&AOF_SP.indexOf(m.lure)>-1?m.lure:null;
+    var stat=s[1]?'<span class="fd-sp-stat"><b>'+big(s[1])+'</b> stocked'+(s[2]?' &middot; last '+ym(s[2]):'')+'</span>':'<span class="fd-sp-stat">In the VFA guide</span>';
+    var link=lure&&!seen[lure]?'<a class="fd-sp-go" href="'+lureUrl(lure)+'">Browse '+esc(CHIP_LABEL[lure]||lure)+' lures</a>':'';
+    if(lure)seen[lure]=1;
+    var pic=img?'<img src="'+img+'" alt="One of the crew holding a '+esc(m.label.toLowerCase())+'" width="640" height="480" loading="lazy">':'<span class="fd-sp-blank">'+FISH+'</span>';
+    return '<li class="fd-sp'+(img?'':' fd-sp-name')+'"><div class="fd-sp-pic">'+pic+'<span class="fd-sp-tag">'+esc(m.label)+'</span></div>'+stat+link+'</li>';
+  }).join('');
+}
+function kit(w){
+  var g=w._g,saltw=salt(w),cod=g['Murray Cod'],trout=g.Trout&&Object.keys(g).length===1;
+  var items=saltw?[
+    ['rods','2 to 4 kg spin rod',shopUrl('rods','Spinning Rods')],['reels','2500 to 4000 spin reel',shopUrl('reels','Spinning Reels')],['line','Braid and leader',shopUrl('line','Braid')],['terminal','Sinkers and bait hooks',shopUrl('terminal','Sinkers')],['lures',AOF_SP.indexOf(Object.keys(g)[0])>-1?'Lures for '+(CHIP_LABEL[Object.keys(g)[0]]||Object.keys(g)[0]).toLowerCase():'Lures for this water',lureUrl(Object.keys(g)[0])]
+  ]:cod?[
+    ['rods','Baitcast or heavy spin rod',shopUrl('rods','Baitcast Rods')],['reels','Baitcast reel',shopUrl('reels','Baitcast Reels')],['line','30 to 50 lb braid',shopUrl('line','Braid')],['lures','Cod lures',lureUrl('Murray Cod')],['terminal','Snaps for quick lure changes',shopUrl('terminal','Swivels & Snaps')]
+  ]:trout?[
+    ['rods','Light spin rod',shopUrl('rods','Spinning Rods')],['reels','1000 to 2500 spin reel',shopUrl('reels','Spinning Reels')],['line','Light braid and leader',shopUrl('line','Leader')],['lures','Trout lures',lureUrl('Trout')],['terminal','Floats, hooks and sinkers for bait',shopUrl('terminal','Floats')]
+  ]:[
+    ['rods','2 to 4 kg spin rod',shopUrl('rods','Spinning Rods')],['reels','2500 spin reel',shopUrl('reels','Spinning Reels')],['line','Braid and leader',shopUrl('line','Braid')],['lures',AOF_SP.indexOf(Object.keys(g)[0])>-1?'Lures for '+(CHIP_LABEL[Object.keys(g)[0]]||Object.keys(g)[0]).toLowerCase():'Lures for this water',lureUrl(Object.keys(g)[0])],['terminal','Sinkers and hooks',shopUrl('terminal','Sinkers')]
+  ];
+  return '<ul class="fd-kit-list">'+items.map(function(i){return '<li><a href="'+i[2]+'"><img src="assets/tiles/'+i[0]+'.webp" alt="" width="640" height="480" loading="lazy"><span>'+esc(i[1])+'</span></a></li>';}).join('')+'</ul><p class="fd-kit-foot">Not sure? <a href="index.html#setup">Build a setup</a> or call <a href="tel:+61352223257">03 5222 3257</a>.</p>';
+}
+function hero(w){
+  if(w.p)return '<figure class="fd-hero"><img src="'+esc(w.p.u)+'" alt="'+esc(w.n)+'" width="960" height="540"><figcaption><a href="'+esc(w.p.h)+'" rel="noopener">Photo: '+esc(w.p.a||'Wikimedia Commons')+', '+esc(w.p.l)+'</a></figcaption></figure>';
+  if(mapOk)return '';
+  // No photo and no live map: a little map made of OpenStreetMap tiles, centred on the water.
+  var z=11,n=Math.pow(2,z),x=(w.lo+180)/360*n,r=w.la*Math.PI/180,y=(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n;
+  var tx=Math.floor(x)-2,ty=Math.floor(y)-2,ox=(x-tx)/4,oy=(y-ty)/4,t='';
+  for(var j=0;j<4;j++)for(var i=0;i<4;i++)t+='<img src="https://tile.openstreetmap.org/'+z+'/'+(tx+i)+'/'+(ty+j)+'.png" alt="" width="256" height="256" loading="lazy">';
+  // The tile block is twice the frame's width; the frame is 16:9, so the block is 32/9 frames tall.
+  return '<figure class="fd-hero fd-tiles" aria-hidden="true"><div class="fd-tiles-in" style="left:'+(50-ox*200).toFixed(2)+'%;top:'+(50-oy*200*16/9).toFixed(2)+'%">'+t+'</div><span class="fd-hero-pin"></span><figcaption>&copy; OpenStreetMap contributors</figcaption></figure>';
+}
+function open(id,push){
+  var w=BY[id];if(!w)return;state.open=id;
+  var panel=$('#fd-panel'),tot=total(w),ls=last(w);
+  var ramps=w.b.length?'<ul class="fd-ramps">'+w.b.map(function(b){return '<li><a href="https://www.openstreetmap.org/?mlat='+b[2]+'&amp;mlon='+b[3]+'#map=16/'+b[2]+'/'+b[3]+'" rel="noopener"><span class="fd-ramp-ico" aria-hidden="true"></span><span>'+(b[0]?esc(b[0]):'Boat ramp <small>'+compass([w.la,w.lo],[b[2],b[3]])+'</small>')+'</span><b>'+(b[1]<.5?'Here':b[1]+' km')+'</b></a></li>';}).join('')+'</ul>':'<p class="fd-quiet">No mapped ramps within 15 km.</p>';
+  var shore=w.k[0]?'<p class="fd-shore"><b>'+w.k[0]+'</b> jett'+(w.k[0]===1?'y or fishing spot':'ies and fishing spots')+' within 5 km'+(w.k[1].length?': '+w.k[1].map(function(s){return esc(s[0]);}).join(', '):'')+'</p>':'<p class="fd-quiet">No mapped jetties or fishing spots within 5 km.</p>';
+  var dirs='https://www.google.com/maps/dir/?api=1&amp;destination='+w.la+','+w.lo;
+  panel.innerHTML='<div class="fd-p-top"><button type="button" class="fd-back" data-close>All waters</button><a class="fd-dirs" href="'+dirs+'" rel="noopener">Directions</a></div>'+hero(w)+
+    '<div class="fd-p-head"><span class="fd-type">'+TYPE_LABEL[w.t]+'</span><h2>'+esc(w.n)+'</h2><p>'+esc(w.r)+' &middot; '+dist(w)+' km from '+(state.me?'you':'the shop')+'</p></div>'+
+    (salt(w)?'<p class="fd-quiet fd-salt">Not stocked. Fish from the <a href="'+esc(w.src)+'" rel="noopener">VFA fishing guide</a>.</p>':
+    '<dl class="fd-stats"><div><dt>Fish stocked since '+D.meta.stockFrom+'</dt><dd>'+big(tot)+'</dd></div><div><dt>Last stocked</dt><dd>'+ym(ls)+'</dd></div><div><dt>Species</dt><dd>'+w.s.length+'</dd></div></dl>')+
+    '<button type="button" class="btn btn-mint fd-kit-btn" data-kit aria-expanded="false" aria-controls="fd-kit">Just give me the essentials</button><div class="fd-kit" id="fd-kit" hidden>'+kit(w)+'</div>'+
+    '<h3 class="fd-h">'+(salt(w)?'Fish here':'Stocked here')+'</h3><ul class="fd-sps">'+speciesCards(w)+'</ul>'+
+    (w.b.length||w.k[0]?'<div class="fd-access"><div><h3 class="fd-h">Nearest boat ramps</h3>'+ramps+'<p class="fd-quiet">Mapped ramps closest to this water. Check they launch onto it.</p></div><div><h3 class="fd-h">From the bank</h3>'+shore+'</div></div>':'<p class="fd-quiet fd-none-mapped">No boat ramps or jetties mapped nearby.</p>')+
+    '<p class="fd-p-src">'+(w.v?'VFA name: '+esc(w.v)+'. ':'')+'<a href="'+VFA_GUIDE+'" rel="noopener">Check the rules</a> before you go.</p>';
+  panel.hidden=false;$('#fd-results').hidden=true;
+  if(push!==false)history.pushState(null,'','finder.html?water='+id+(state.chip?'&species='+encodeURIComponent(state.chip):''));
+  else if(push===false&&!/water=/.test(location.search))history.replaceState(null,'','finder.html?water='+id);
+  document.title=w.n+' | Where are you fishing? | All Out Fishing';
+  if(mapOk)focus(w);
+  if(push!==false){panel.focus({preventScroll:true});if(innerWidth<900)(mapOk?$('#fd-map'):panel).scrollIntoView({behavior:'smooth',block:'start'});else if(panel.getBoundingClientRect().top<0)panel.scrollIntoView({behavior:'smooth',block:'start'});}
+}
+function close(fromPop){
+  var id=state.open;state.open=null;$('#fd-panel').hidden=true;$('#fd-results').hidden=false;
+  if(!fromPop)history.pushState(null,'','finder.html'+(state.chip?'?species='+encodeURIComponent(state.chip):''));
+  document.title='Where are you fishing? | All Out Fishing';
+  list();if(rampLayer)rampLayer.clearLayers();fit();
+  var a=!fromPop&&id&&$('#fd-list a[data-water="'+id+'"]');if(a)a.focus();
 }
 
-panel.addEventListener('click',function(e){
-  var b=e.target.closest('[data-pick]');if(!b||!cur)return;
-  pick=b.getAttribute('data-pick');
-  panel.querySelectorAll('[data-pick]').forEach(function(c){c.setAttribute('aria-pressed',String(c===b));});
-  document.getElementById('fd-catch').innerHTML=catchHTML();
-});
-
-document.addEventListener('click',function(e){
-  var a=e.target.closest('a[data-water]');if(!a||e.metaKey||e.ctrlKey||e.shiftKey)return;
-  e.preventDefault();var id=a.getAttribute('data-water');
-  history.replaceState(null,'','?water='+id);
-  render(id,true);
-});
-
-var start=new URLSearchParams(location.search).get('water');
-if(start&&WATERS[start])render(start,false);
+/* ---------- map */
+function loadMap(){
+  Promise.all([load(LEAFLET+'leaflet.min.css',true),load(LEAFLET+'leaflet.min.js')])
+  .then(function(){return Promise.all([load(CLUSTER+'MarkerCluster.min.css',true),load(CLUSTER+'leaflet.markercluster.min.js')]);})
+  .then(makeMap).catch(function(){var m=$('#fd-map');m.classList.add('fd-map-off');m.innerHTML='<p class="fd-map-msg">The map didn&rsquo;t load. Use the list.</p>';});
+}
+function makeMap(){
+  var el=$('#fd-map');el.innerHTML='';
+  map=L.map(el,{zoomSnap:.5,scrollWheelZoom:false,attributionControl:true});vic();
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
+  map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
+  el.addEventListener('click',function(){map.scrollWheelZoom.enable();},{once:true});
+  cluster=L.markerClusterGroup({showCoverageOnHover:false,maxClusterRadius:44,spiderfyOnMaxZoom:true,
+    iconCreateFunction:function(c){var n=c.getChildCount();return L.divIcon({html:'<span>'+n+'</span>',className:'fd-clu'+(n>20?' fd-clu-l':''),iconSize:n>20?[46,46]:[38,38]});}});
+  W.forEach(function(w){
+    var m=L.marker([w.la,w.lo],{icon:L.divIcon({className:'fd-pin fd-pin-'+(salt(w)?'salt':'fresh'),iconSize:[22,22]}),title:w.n,alt:w.n,keyboard:false});
+    m.on('click',function(){open(w.id,true);});
+    m.bindTooltip(esc(w.n),{direction:'top',offset:[0,-10]});
+    markers[w.id]=m;
+  });
+  map.addLayer(cluster);
+  rampLayer=L.layerGroup().addTo(map);
+  mapOk=true;paint(filtered());
+  var mk=L.marker(SHOP,{icon:L.divIcon({className:'fd-shop',html:'<span>Shop</span>',iconSize:[46,22]}),keyboard:false,zIndexOffset:1000}).addTo(map);
+  mk.bindTooltip('All Out Fishing, 105 Shannon Ave',{direction:'top'});
+  if(state.open)open(state.open,false);else fit();
+}
+function paint(f){
+  cluster.clearLayers();
+  cluster.addLayers(f.map(function(w){return markers[w.id];}));
+  Object.keys(markers).forEach(function(id){var e=markers[id].getElement();if(e)e.classList.toggle('on',id===state.open);});
+}
+function fit(){
+  if(!mapOk||state.open)return;
+  var f=filtered();
+  if(f.length&&f.length<W.length)map.fitBounds(L.latLngBounds(f.map(function(w){return [w.la,w.lo];})).pad(.15),{maxZoom:10});
+  else vic();
+}
+function vic(){map.fitBounds(L.latLngBounds(W.map(function(w){return [w.la,w.lo];})),{padding:[16,16]});}
+function focus(w){
+  rampLayer.clearLayers();
+  w.b.forEach(function(b){L.marker([b[2],b[3]],{icon:L.divIcon({className:'fd-rampm',iconSize:[16,16]}),keyboard:false,title:b[0]||'Boat ramp'}).bindTooltip(esc(b[0]||'Boat ramp')).addTo(rampLayer);});
+  var pts=[[w.la,w.lo]].concat(w.b.map(function(b){return [b[2],b[3]];}));
+  var m=markers[w.id];
+  if(!cluster.hasLayer(m))cluster.addLayer(m);
+  map.fitBounds(L.latLngBounds(pts).pad(.35),{maxZoom:12});
+  setTimeout(function(){Object.keys(markers).forEach(function(id){var e=markers[id].getElement();if(e)e.classList.toggle('on',id===w.id);});},450);
+}
 })();

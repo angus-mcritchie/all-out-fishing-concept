@@ -16,7 +16,7 @@ if(new URLSearchParams(location.search).get('demo')==='1'&&!C.get().length){
   const seed=[];
   if(reel)seed.push({id:'item-'+reel.id,name:reel.name,brand:reel.brand,img:reel.img,price:reel.price,qty:1,option:''});
   if(lure)seed.push({id:'lure-'+lure.name,name:lure.name,brand:lure.brand,img:lure.img,price:lure.price,qty:2,option:''});
-  if(flt)seed.push({id:'item-'+flt.id,name:flt.name,brand:flt.brand,img:flt.img,price:flt.price,qty:4,option:''});
+  if(flt)seed.push({id:'item-'+flt.id,name:flt.name,brand:flt.brand,img:flt.img,price:flt.price,qty:4,option:'',src:flt.src});
   C.set(seed);
 }
 
@@ -27,7 +27,7 @@ function line(x,i){
   const k=esc(keyOf(x)),nm=esc(x.name);
   return `<li class="line" data-key="${k}">
   <a class="l-pic" href="product.html" tabindex="-1" aria-hidden="true"><img src="${esc(x.img)}" alt="" width="200" height="200"></a>
-  <div class="l-info">${x.brand?`<p class="l-br">${esc(x.brand)}</p>`:''}<h3 class="l-name"><a href="product.html">${nm}</a></h3>${x.option?`<p class="l-opt">${esc(x.option)}</p>`:''}<p class="l-each">${money(x.price)} each</p></div>
+  <div class="l-info">${x.brand?`<p class="l-br">${esc(x.brand)}</p>`:''}<h3 class="l-name"><a href="product.html">${nm}</a></h3>${x.option?`<p class="l-opt">${esc(x.option)}</p>`:''}<p class="l-each">${money(x.price)} each${x.src&&x.src!=='aof'?' <span class="l-rrp">(maker&rsquo;s RRP, sample)</span>':''}</p></div>
   <div class="l-ctl"><div class="step" role="group" aria-label="Quantity of ${nm}"><button type="button" data-dec aria-label="Decrease quantity of ${nm}"${x.qty<=1?' disabled':''}>&minus;</button><output aria-label="Quantity">${x.qty}</output><button type="button" data-inc aria-label="Increase quantity of ${nm}"${x.qty>=99?' disabled':''}>+</button></div><button type="button" class="l-rm" data-rm>Remove<span class="sr"> ${nm}</span></button></div>
   <p class="l-tot"><span class="sr">Line total </span>${money(x.price*x.qty)}</p>
 </li>`}
