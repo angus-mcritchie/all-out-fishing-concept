@@ -1,10 +1,8 @@
-/* Brands A to Z: built from AOF_ITEMS and AOF_LURES. Find box narrows the list; letter bar jumps. */
+/* Brands A to Z: built from the brand counts in data.js, so this page does not load the full product list. Find box narrows the list; letter bar jumps. */
 (function(){
   var root=document.querySelector('[data-brands]');if(!root)return;
   var counts={};
-  (window.AOF_ITEMS||[]).concat(window.AOF_LURES||[]).forEach(function(p){
-    var b=(p.brand||'').trim();if(b)counts[b]=(counts[b]||0)+1;
-  });
+  (window.AOF_BRAND_COUNTS||[]).forEach(function(x){counts[x[0]]=x[1]});
   var names=Object.keys(counts).sort(function(a,b){return a.localeCompare(b,'en-AU',{sensitivity:'base'})});
   function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
   function href(b){return 'shop.html?brand='+encodeURIComponent(b)}

@@ -429,7 +429,7 @@ button{cursor:pointer}
   .lp{grid-template-columns:1fr;gap:0}
   .grid{grid-template-columns:1fr 1fr;gap:22px 12px}
   .result-line strong{font-size:23px}
-  .result-line select{display:none}
+  .result-line select{height:44px;font-size:16px}
   .filter-open{display:inline-flex;width:100%;margin-bottom:10px}
   .side{position:fixed;left:0;right:0;bottom:0;z-index:100;background:#fff;border-radius:16px 16px 0 0;padding:16px 16px 84px;max-height:82vh;overflow:auto;transform:translateY(105%);transition:transform .2s ease;box-shadow:0 -14px 40px rgba(0,0,0,.3)}
   .side.open{transform:none}
@@ -685,4 +685,92 @@ a.add{display:grid;place-items:center;text-decoration:none}
 @media (max-width:374px){.brand span{display:none}.brand img{width:84px}.head-main{gap:6px 8px}}
 .pc .add{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 8px}
 .pdp .br a{color:var(--ink)}
-.pc .st.rrp{color:var(--body);font-weight:500}
+
+/* ---- skip link: first Tab stop on every page */
+.skip{position:absolute;left:8px;top:-80px;z-index:200;background:var(--mint);color:var(--ink);padding:12px 16px;border-radius:6px;font-weight:700;text-decoration:none}
+.skip:focus{top:8px}
+main:focus{outline:0}
+
+/* ---- prices: tabular figures everywhere. A sale is one signal: black price, saving in red, regular price struck in grey where there is room */
+:root{--sale:#b3121f;--was:#5b6672}
+.pr,.pr .now,.suggest .hit .p,.pdp .price,.buybar b,.l-each,.l-tot,.save,.was,.sum-rows dd,.sum-total strong,.bar-tot strong{font-variant-numeric:tabular-nums}
+.save{color:var(--sale);font-weight:700;white-space:nowrap}
+.was{color:var(--was);font-weight:400;white-space:nowrap}
+.save[hidden],.was[hidden]{display:none}
+.pc .row{flex-wrap:wrap;gap:0 8px}
+.pc .pr{display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:0 6px}
+.pc .pr .save,.pc .pr .was{font-size:14px}
+.pc .row .st{margin-left:auto}
+.suggest .hit .p{display:grid;justify-items:end}
+.suggest .hit .p small{display:inline}
+.suggest .hit .save{font-size:13px}
+.price-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px}
+.pdp .price .save{font:700 18px/1.2 var(--sans)}
+.pdp .price .was{font:400 16px/1.2 var(--sans)}
+.bb-sub{display:flex;gap:6px;align-items:baseline;margin-top:2px}
+.buybar .save{font-size:13.5px}
+.l-each .save{margin-left:4px}
+.l-each .was{margin-left:4px}
+@media (max-width:820px){.pc .was,.l-each .was{display:none}}
+
+/* ---- product gallery and photo viewer. Photos are contained, never cropped */
+.gal-main{display:block;width:100%;padding:0;border:0;background:#fff;border-radius:8px;cursor:zoom-in}
+.gal-thumbs{display:flex;gap:8px;margin-top:10px}
+.gal-thumbs button{width:60px;height:60px;padding:3px;background:#fff;border:2px solid var(--line);border-radius:6px;flex:none}
+.gal-thumbs button[aria-pressed="true"]{border-color:var(--ink)}
+.pdp .gal .gal-thumbs img{width:100%;height:100%;aspect-ratio:auto;max-height:none;object-fit:contain}
+dialog.zoom{position:fixed;inset:0;width:100%;height:100dvh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:rgba(20,24,28,.94);overflow:hidden}
+dialog.zoom:not([open]){display:none}
+dialog.zoom[open]{animation:zoom-fade .2s ease-out}
+@keyframes zoom-fade{from{opacity:0}to{opacity:1}}
+.zoom-stage{width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:60px 16px 56px}
+.zoom-stage img{display:block;width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain;background:#fff;border-radius:8px}
+.zoom-stage img.img-off{width:min(80vw,560px);aspect-ratio:1}
+.zoom-x,.zoom-prev,.zoom-next{position:absolute;width:48px;height:48px;display:grid;place-items:center;border:0;border-radius:6px;background:#fff;color:var(--ink);font-size:30px;line-height:1}
+.zoom-x:hover,.zoom-prev:hover,.zoom-next:hover{background:var(--mint)}
+.zoom :focus-visible{outline:3px solid var(--mint);outline-offset:2px}
+.zoom-x{top:10px;right:12px}
+.zoom-prev{left:12px;top:50%;transform:translateY(-50%)}
+.zoom-next{right:12px;top:50%;transform:translateY(-50%)}
+.zoom-prev[hidden],.zoom-next[hidden],.zoom-n[hidden]{display:none}
+.zoom-n{pointer-events:none;position:absolute;left:0;right:0;bottom:16px;text-align:center;color:#fff;font-size:15px;font-weight:600}
+@media (max-width:600px){.zoom-prev,.zoom-next{top:auto;bottom:6px;transform:none}.zoom-stage{padding:60px 8px 64px}}
+@media (prefers-reduced-motion:reduce){dialog.zoom[open]{animation:none}}
+
+/* ---- add to cart: busy keeps the label's width, a spinner sits on top */
+[data-add]{position:relative}
+[data-add].busy{color:transparent!important;pointer-events:none}
+[data-add].busy::after{content:"";position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border:2px solid var(--busy,currentColor);border-right-color:transparent;border-radius:50%;animation:add-spin .7s linear infinite}
+.btn-mint[data-add]{--busy:var(--ink)}.pc .add[data-add]{--busy:#fff}
+@keyframes add-spin{to{transform:rotate(360deg)}}
+
+/* ---- photos: a quiet box while loading or when missing. No shimmer */
+.pc .pic img:not(.img-ok),.l-pic img:not(.img-ok),.suggest .hit img:not(.img-ok),.pdp .gal img:not(.img-ok),.toast img:not(.img-ok),.zoom-stage img:not(.img-ok){background:var(--tray)}
+
+/* ---- page not found and shop failure */
+.msg-page{padding-top:32px;padding-bottom:56px}
+.msg-page h1{font-size:56px;margin-bottom:10px}
+.msg-page .lead{font-size:18px;color:var(--body);max-width:36em}
+.msg-acts{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0}
+.msg-cats{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.msg-cats a{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;background:var(--tray);border-radius:6px;color:var(--ink);font-weight:600;text-decoration:none}
+.msg-cats a:hover{background:var(--mint)}
+.msg-page h2{font-size:26px;margin-top:26px}
+@media (max-width:820px){.msg-page{padding-top:16px}.msg-page h1{font-size:44px}.msg-acts .btn{flex:1 1 auto}}
+/* colour swatches on lure cards: small photos, decorative, the button states the count */
+.pc .swatches{display:flex;align-items:center;gap:0;margin:4px 0 0 -3px}
+.pc .swatches a{display:flex;align-items:center;justify-content:center;width:32px;height:32px;flex:none}
+.pc .swatches img{width:26px;height:26px;aspect-ratio:1;object-fit:contain;border:1px solid var(--line);border-radius:4px;background:#fff}
+.pc .swatches{flex-wrap:wrap}
+.pc .swatches span{font-size:12.5px;font-weight:600;color:var(--body);margin-left:2px}
+/* show more */
+.more{display:flex;flex-direction:column;align-items:center;gap:10px;margin:24px 0 8px}
+.more:empty{display:none}
+.more-count{font-size:14px;color:var(--body);margin:0}
+.more .btn{min-width:220px}
+#colour-more{font-size:13px;font-weight:500;color:var(--body);margin-left:4px}
+
+/* ---- newsletter message: full width under the field and button */
+#join-form{flex-wrap:wrap}
+.join-msg{flex:1 0 100%;margin:0;font-size:14.5px;font-weight:600;color:var(--ink)}
+.join-msg:empty{display:none}

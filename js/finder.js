@@ -10,7 +10,7 @@ var CLUSTER='https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/
 var VFA_GUIDE='https://vfa.vic.gov.au/recreational-fishing/recreational-fishing-guide';
 var PAGE=20;
 var AOF_SP=window.AOF_SPECIES||[];
-var ITEMS=window.AOF_ITEMS||[];
+var CATS=window.AOF_CATS||{};
 var OPT={'australian-salmon':1,'bream':1,'brown-trout':1,'flathead':1,'king-george-whiting':1,'snapper':1,'southern-calamari':1};
 var CHIP_LABEL={'Yellow Belly':'Yellowbelly','Murray Cod':'Murray cod','Estuary Perch':'Estuary perch','King George Whiting':'KG whiting','Australian Salmon':'Salmon'};
 var TYPE_LABEL={lake:'Lake',river:'River',estuary:'Estuary',bay:'Bay'};
@@ -25,7 +25,7 @@ function big(n){return n>=1e6?(n/1e6).toFixed(n>=1e7?0:1).replace(/\.0$/,'')+'M'
 var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function ym(s){if(!s)return '';var p=s.split('-');return MON[+p[1]-1]+' '+p[0];}
 function lureUrl(sp){return AOF_SP.indexOf(sp)>-1?'lures.html?species='+encodeURIComponent(sp):'lures.html';}
-function shopUrl(cat,type){var has=ITEMS.some(function(i){return i.cat===cat&&(!type||i.type===type);});return 'shop.html?cat='+cat+(type&&has?'&type='+encodeURIComponent(type):'');}
+function shopUrl(cat,type){var has=!!(CATS[cat]&&CATS[cat][2].indexOf(type)>-1);return 'shop.html?cat='+cat+(type&&has?'&type='+encodeURIComponent(type):'');}
 function group(vfa){var m=SP[vfa]||{};return m.lure||m.label||vfa;}
 function photo(key){return key?(OPT[key]?'assets/opt/sp-'+key+'.webp':'assets/species/'+key+'.jpg'):'';}
 function compass(a,b){var d=Math.atan2((b[1]-a[1])*Math.cos(a[0]*Math.PI/180),b[0]-a[0])*180/Math.PI;return ['north','north-east','east','south-east','south','south-west','west','north-west'][Math.round(((d+360)%360)/45)%8];}
@@ -44,7 +44,7 @@ function init(){
   W.forEach(function(w){BY[w.id]=w;w._g={};w.s.forEach(function(s){w._g[group(s[0])]=1;});});
   var counts={};W.forEach(function(w){Object.keys(w._g).forEach(function(g){counts[g]=(counts[g]||0)+1;});});
   GROUPS=Object.keys(counts).filter(function(g){return AOF_SP.indexOf(g)>-1;}).sort(function(a,b){return counts[b]-counts[a];});
-  $('#fd-sub').textContent=D.meta.stocked+' Victorian waters with VFA stocking records. Tap one.';
+  $('#fd-sub').textContent=D.meta.waters+' Victorian waters, '+D.meta.stocked+' with VFA stocking records. Tap one.';
   $('#fd-src').innerHTML='Stocking: <a href="'+esc(D.meta.vfaDb)+'" rel="noopener">Victorian Fisheries Authority stocking database</a>, '+D.meta.stockFrom+' to '+ym(D.meta.stockTo.slice(0,7))+', &copy; State of Victoria. Ramps and jetties: &copy; <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap</a> contributors. Downloaded '+esc(D.meta.built.split('-').reverse().join('/'))+'.';
   var p=new URLSearchParams(location.search);
   var sp=p.get('species');if(sp&&counts[sp])state.chip=sp;
@@ -129,13 +129,13 @@ function speciesCards(w){
 function kit(w){
   var g=w._g,saltw=salt(w),cod=g['Murray Cod'],trout=g.Trout&&Object.keys(g).length===1;
   var items=saltw?[
-    ['rods','2 to 4 kg spin rod',shopUrl('rods','Spinning Rods')],['reels','2500 to 4000 spin reel',shopUrl('reels','Spinning Reels')],['line','Braid and leader',shopUrl('line','Braid')],['terminal','Sinkers and bait hooks',shopUrl('terminal','Sinkers')],['lures',AOF_SP.indexOf(Object.keys(g)[0])>-1?'Lures for '+(CHIP_LABEL[Object.keys(g)[0]]||Object.keys(g)[0]).toLowerCase():'Lures for this water',lureUrl(Object.keys(g)[0])]
+    ['rods','2 to 4 kg spin rod',shopUrl('rods','Spinning Rod')],['reels','2500 to 4000 spin reel',shopUrl('reels','Spinning Reel')],['line','Braid and leader',shopUrl('line','Braid')],['terminal','Sinkers and bait hooks',shopUrl('terminal','Sinker')],['lures',AOF_SP.indexOf(Object.keys(g)[0])>-1?'Lures for '+(CHIP_LABEL[Object.keys(g)[0]]||Object.keys(g)[0]).toLowerCase():'Lures for this water',lureUrl(Object.keys(g)[0])]
   ]:cod?[
     ['rods','Baitcast or heavy spin rod',shopUrl('rods','Baitcast Rods')],['reels','Baitcast reel',shopUrl('reels','Baitcast Reels')],['line','30 to 50 lb braid',shopUrl('line','Braid')],['lures','Cod lures',lureUrl('Murray Cod')],['terminal','Snaps for quick lure changes',shopUrl('terminal','Swivels & Snaps')]
   ]:trout?[
-    ['rods','Light spin rod',shopUrl('rods','Spinning Rods')],['reels','1000 to 2500 spin reel',shopUrl('reels','Spinning Reels')],['line','Light braid and leader',shopUrl('line','Leader')],['lures','Trout lures',lureUrl('Trout')],['terminal','Floats, hooks and sinkers for bait',shopUrl('terminal','Floats')]
+    ['rods','Light spin rod',shopUrl('rods','Spinning Rod')],['reels','1000 to 2500 spin reel',shopUrl('reels','Spinning Reel')],['line','Light braid and leader',shopUrl('line','Leader')],['lures','Trout lures',lureUrl('Trout')],['terminal','Floats, hooks and sinkers for bait',shopUrl('terminal','Floats')]
   ]:[
-    ['rods','2 to 4 kg spin rod',shopUrl('rods','Spinning Rods')],['reels','2500 spin reel',shopUrl('reels','Spinning Reels')],['line','Braid and leader',shopUrl('line','Braid')],['lures',AOF_SP.indexOf(Object.keys(g)[0])>-1?'Lures for '+(CHIP_LABEL[Object.keys(g)[0]]||Object.keys(g)[0]).toLowerCase():'Lures for this water',lureUrl(Object.keys(g)[0])],['terminal','Sinkers and hooks',shopUrl('terminal','Sinkers')]
+    ['rods','2 to 4 kg spin rod',shopUrl('rods','Spinning Rod')],['reels','2500 spin reel',shopUrl('reels','Spinning Reel')],['line','Braid and leader',shopUrl('line','Braid')],['lures',AOF_SP.indexOf(Object.keys(g)[0])>-1?'Lures for '+(CHIP_LABEL[Object.keys(g)[0]]||Object.keys(g)[0]).toLowerCase():'Lures for this water',lureUrl(Object.keys(g)[0])],['terminal','Sinkers and hooks',shopUrl('terminal','Sinker')]
   ];
   return '<ul class="fd-kit-list">'+items.map(function(i){return '<li><a href="'+i[2]+'"><img src="assets/tiles/'+i[0]+'.webp" alt="" width="640" height="480" loading="lazy"><span>'+esc(i[1])+'</span></a></li>';}).join('')+'</ul><p class="fd-kit-foot">Not sure? <a href="index.html#setup">Build a setup</a> or call <a href="tel:+61352223257">03 5222 3257</a>.</p>';
 }

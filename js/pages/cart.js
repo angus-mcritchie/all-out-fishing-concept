@@ -4,21 +4,23 @@ const $=(s,r=document)=>r.querySelector(s);
 const C=window.AOFCart;if(!C)return;
 const money=n=>'$'+Number(n).toLocaleString('en-AU',{minimumFractionDigits:2,maximumFractionDigits:2});
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const F=window.AOFFormat;
 const keyOf=x=>x.id+'|'+(x.option||'');
 const list=$('#cart-lines'),full=$('#cart-full'),empty=$('#cart-empty'),bar=$('#cart-bar'),live=$('#cart-live'),msg=$('#ck-msg');
 
-/* ?demo=1 seeds three real lines when the cart is empty: a Daiwa reel, a lure and a Jarvis Walker float */
-if(new URLSearchParams(location.search).get('demo')==='1'&&!C.get().length){
+/* ?demo=1 seeds three real lines when the cart is empty: a Daiwa reel, a lure and a float */
+if(new URLSearchParams(location.search).get('demo')==='1'&&!C.get().length)window.AOFCatalogue().then(()=>{
   const items=window.AOF_ITEMS||[],lures=window.AOF_LURES||[];
-  const reel=items.find(x=>x.cat==='reels'&&x.name==='Daiwa Aird LT')||items.find(x=>x.cat==='reels'&&x.brand==='Daiwa');
-  const lure=lures.find(x=>x.name==='Daiwa Double Clutch 95SP')||lures[0];
-  const flt=items.find(x=>x.brand==='Jarvis Walker'&&x.type==='Floats');
+  const reel=items.find(x=>x.cat==='reels'&&x.brand==='Daiwa');
+  const lure=lures[0];
+  const flt=items.find(x=>x.cat==='terminal'&&x.type==='Float');
   const seed=[];
-  if(reel)seed.push({id:'item-'+reel.id,name:reel.name,brand:reel.brand,img:reel.img,price:reel.price,qty:1,option:''});
-  if(lure)seed.push({id:'lure-'+lure.name,name:lure.name,brand:lure.brand,img:lure.img,price:lure.price,qty:2,option:''});
-  if(flt)seed.push({id:'item-'+flt.id,name:flt.name,brand:flt.brand,img:flt.img,price:flt.price,qty:4,option:'',src:flt.src});
+  const fmt=window.AOFFormat;
+  if(reel)seed.push({id:fmt.productId(reel),href:fmt.pdpHref(reel),name:reel.name,brand:reel.brand,img:reel.img,price:reel.price,qty:1,option:''});
+  if(lure)seed.push({id:fmt.productId(lure),href:fmt.pdpHref(lure),name:lure.name,brand:lure.brand,img:lure.img,price:lure.price,was:lure.was,qty:2,option:''});
+  if(flt)seed.push({id:fmt.productId(flt),href:fmt.pdpHref(flt),name:flt.name,brand:flt.brand,img:flt.img,price:flt.price,qty:4,option:''});
   C.set(seed);
-}
+});
 
 const totals=items=>({n:items.reduce((a,x)=>a+x.qty,0),sum:items.reduce((a,x)=>a+x.price*x.qty,0)});
 const itemsWord=n=>n+(n===1?' item':' items');
@@ -26,8 +28,8 @@ const itemsWord=n=>n+(n===1?' item':' items');
 function line(x,i){
   const k=esc(keyOf(x)),nm=esc(x.name);
   return `<li class="line" data-key="${k}">
-  <a class="l-pic" href="product.html" tabindex="-1" aria-hidden="true"><img src="${esc(x.img)}" alt="" width="200" height="200"></a>
-  <div class="l-info">${x.brand?`<p class="l-br">${esc(x.brand)}</p>`:''}<h3 class="l-name"><a href="product.html">${nm}</a></h3>${x.option?`<p class="l-opt">${esc(x.option)}</p>`:''}<p class="l-each">${money(x.price)} each${x.src&&x.src!=='aof'?' <span class="l-rrp">(maker&rsquo;s RRP, sample)</span>':''}</p></div>
+  <a class="l-pic" href="${esc(x.href||'product.html')}" tabindex="-1" aria-hidden="true"><img src="${esc(x.img)}" alt="" width="200" height="200"></a>
+  <div class="l-info">${x.brand?`<p class="l-br">${esc(x.brand)}</p>`:''}<h3 class="l-name"><a href="${esc(x.href||'product.html')}">${nm}</a></h3>${x.option?`<p class="l-opt">${esc(F.unit(x.option))}</p>`:''}<p class="l-each"><span class="now">${money(x.price)}</span> each${x.was>x.price?` <span class="save">${F.saveText(x.price,x.was)}</span> <s class="was"><span class="sr">Regular price </span>${money(x.was)}</s>`:''}</p></div>
   <div class="l-ctl"><div class="step" role="group" aria-label="Quantity of ${nm}"><button type="button" data-dec aria-label="Decrease quantity of ${nm}"${x.qty<=1?' disabled':''}>&minus;</button><output aria-label="Quantity">${x.qty}</output><button type="button" data-inc aria-label="Increase quantity of ${nm}"${x.qty>=99?' disabled':''}>+</button></div><button type="button" class="l-rm" data-rm>Remove<span class="sr"> ${nm}</span></button></div>
   <p class="l-tot"><span class="sr">Line total </span>${money(x.price*x.qty)}</p>
 </li>`}
@@ -77,6 +79,19 @@ let summaryVisible=true;
 function syncBar(){bar.hidden=!(matchMedia('(max-width:820px)').matches&&!summaryVisible&&!full.hidden);document.body.classList.toggle('has-cart-bar',!bar.hidden)}
 if('IntersectionObserver' in window){new IntersectionObserver(es=>{summaryVisible=es[0].isIntersecting;syncBar()}).observe($('.cart-sum .sum-go'))}
 matchMedia('(max-width:820px)').addEventListener('change',syncBar);
+
+/* ---- delivery options. At most one label each: Free, then Fastest, then Cheapest. Never promise a date; prices come from checkout. */
+const OPTIONS=[{id:'collect',name:'Click &amp; Collect, Geelong shop',when:'Usually ready within an hour during store hours',free:true},{id:'standard',name:'Standard delivery',when:'Arrives 2 to 7 business days after dispatch'},{id:'express',name:'Express delivery',when:'Arrives 1 to 3 business days after dispatch',fastest:true}];
+const labelOf=o=>o.free?'Free':o.fastest?'Fastest':o.cheapest?'Cheapest':'';
+const shipBox=$('#ship-opts'),sumDel=$('#sum-del');
+if(shipBox){
+  shipBox.insertAdjacentHTML('beforeend',OPTIONS.map(o=>{const l=labelOf(o);return `<label class="ship-opt"><input type="radio" name="ship" value="${o.id}"${o.id==='standard'?' checked':''}><span class="so-main"><span class="so-name">${o.name}${l?` <em class="so-tag">${l}</em>`:''}</span><span class="so-date">${o.when}</span></span><span class="so-price">${o.free?'':'Priced at checkout'}</span></label>`}).join(''));
+  shipBox.addEventListener('change',()=>{const v=shipBox.querySelector('input:checked').value;sumDel.textContent=v==='collect'?'Free':'Priced at checkout'});
+  const pf=$('#post-form'),pc=$('#post-code'),perr=$('#post-err'),pnote=$('#post-note');
+  const checkPost=()=>{const v=pc.value.trim(),msg=!v?'Enter your postcode':/^\d{4}$/.test(v)?'':'Enter a 4-digit postcode';perr.textContent=msg;if(msg)pc.setAttribute('aria-invalid','true');else pc.removeAttribute('aria-invalid');return !msg};
+  pc.addEventListener('input',()=>{if(pc.getAttribute('aria-invalid'))checkPost()});
+  pf.addEventListener('submit',e=>{e.preventDefault();if(!checkPost()){pnote.textContent='';pc.focus();return}pnote.textContent=`Delivery to ${pc.value.trim()} is priced at checkout.`});
+}
 
 render();
 })();
